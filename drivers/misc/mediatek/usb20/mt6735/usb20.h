@@ -103,6 +103,12 @@ extern void fan5405_set_otg_pl(u32 val);
 extern void fan5405_set_otg_en(u32 val);
 extern u32 fan5405_config_interface(u8 RegNum, u8 val, u8 MASK, u8 SHIFT);
 #endif
+#ifdef CONFIG_MTK_BQ24158_SUPPORT
+extern void bq24158_set_opa_mode(unsigned int val);
+extern void bq24158_set_otg_pl(unsigned int val);
+extern void bq24158_set_otg_en(unsigned int val);
+extern unsigned int bq24158_reg_config_interface (unsigned char RegNum, unsigned char val);
+#endif
 
 #ifndef CONFIG_MTK_CLKMGR
 extern struct clk *musb_clk;
