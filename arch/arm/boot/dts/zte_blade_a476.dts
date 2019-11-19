@@ -59,7 +59,7 @@
 	};
 	led5:led@5 {
 		compatible = "mediatek,button-backlight";
-		led_mode = <0>;
+		led_mode = <2>;
 		data = <60>;
 		gpio = <&pio 60 0>;
 		pwm_config = <0 0 0 0 0>;
