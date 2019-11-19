@@ -526,7 +526,7 @@ static int lm3646_probe(struct platform_device *pdev)
 	INIT_WORK(&lm3646_work, lm3646_work_disable);
 
 	/* init timer */
-	lm3646_timeout_ms = 400;
+	lm3646_timeout_ms = 1000;
 	hrtimer_init(&lm3646_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	lm3646_timer.function = lm3646_timer_func;
 
