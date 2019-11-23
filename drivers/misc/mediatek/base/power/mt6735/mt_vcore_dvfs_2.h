@@ -58,6 +58,7 @@ enum dvfs_kicker {
 	KIR_SDIO,		/* 3 */
 	KIR_WIFI,		/* 4 */
 	KIR_PERF,
+	KIR_BOOTUP,
 	KIR_SYSFS,		/* 5 */
 	NUM_KICKER,		/* 6 */
 

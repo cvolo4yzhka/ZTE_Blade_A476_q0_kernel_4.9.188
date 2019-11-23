@@ -185,8 +185,8 @@ static ssize_t dev_char_write(struct file *file, const char __user *buf, size_t 
 	header_len = sizeof(struct ccci_header) + (port->rx_ch == CCCI_FS_RX ? sizeof(unsigned int) : 0);
 	if (port->flags & PORT_F_USER_HEADER) {
 		if (count > (CCCI_MTU + header_len)) {
-			CCCI_ERROR_LOG(port->md_id, CHAR, "reject packet(size=%zu ), larger than MTU on %s\n",
-				     count, port->name);
+			CCCI_ERROR_LOG(port->md_id, CHAR, "reject packet(size=%lu ), larger than MTU on %s\n",
+				     (unsigned long)count, port->name);
 			return -ENOMEM;
 		}
 		actual_count = count;
@@ -261,8 +261,8 @@ static ssize_t dev_char_write(struct file *file, const char __user *buf, size_t 
 		return actual_count;
 
  err_out:
-		CCCI_NORMAL_LOG(port->md_id, CHAR, "write error done on %s, l=%zu r=%d\n",
-			 port->name, actual_count, ret);
+		CCCI_NORMAL_LOG(port->md_id, CHAR, "write error done on %s, l=%lu r=%d\n",
+			 port->name, (unsigned long)actual_count, ret);
 		ccci_free_skb(skb);
 		return ret;
 	}

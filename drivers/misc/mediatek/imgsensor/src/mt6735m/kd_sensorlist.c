@@ -2102,6 +2102,7 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_SET_ESHUTTER_GAIN:
 		if (copy_from_user
 		    ((void *)pFeaturePara, (void *)pFeatureCtrl->pFeaturePara, FeatureParaLen)) {
+			kfree(pFeaturePara);
 			PK_DBG("[CAMERA_HW][pFeaturePara] ioctl copy from user failed\n");
 			return -EFAULT;
 		}
@@ -2141,6 +2142,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pValue = kmalloc(sizeof(MUINT32), GFP_KERNEL);
 			if (pValue == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 
@@ -2240,6 +2243,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pAeAwbRef = kmalloc(sizeof(struct SENSOR_AE_AWB_REF_STRUCT), GFP_KERNEL);
 			if (pAeAwbRef == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pAeAwbRef, 0x0, sizeof(struct SENSOR_AE_AWB_REF_STRUCT));
@@ -2273,6 +2278,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pCrop = kmalloc(sizeof(struct SENSOR_WINSIZE_INFO_STRUCT), GFP_KERNEL);
 			if (pCrop == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pCrop, 0x0, sizeof(struct SENSOR_WINSIZE_INFO_STRUCT));
@@ -2308,6 +2315,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pVcInfo = kmalloc(sizeof(struct SENSOR_VC_INFO_STRUCT), GFP_KERNEL);
 			if (pVcInfo == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pVcInfo, 0x0, sizeof(struct SENSOR_VC_INFO_STRUCT));
@@ -2344,6 +2353,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pPdInfo = kmalloc(sizeof(struct SET_PD_BLOCK_INFO_T), GFP_KERNEL);
 			if (pPdInfo == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pPdInfo, 0x0, sizeof(struct SET_PD_BLOCK_INFO_T));
@@ -2380,6 +2391,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pApWindows = kmalloc(sizeof(MUINT32) * 6, GFP_KERNEL);
 			if (pApWindows == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pApWindows, 0x0, sizeof(MUINT32) * 6);
@@ -2413,6 +2426,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pExif = kmalloc(sizeof(struct SENSOR_EXIF_INFO_STRUCT), GFP_KERNEL);
 			if (pExif == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pExif, 0x0, sizeof(struct SENSOR_EXIF_INFO_STRUCT));
@@ -2449,6 +2464,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pCurAEAWB = kmalloc(sizeof(struct SENSOR_AE_AWB_CUR_STRUCT), GFP_KERNEL);
 			if (pCurAEAWB == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pCurAEAWB, 0x0, sizeof(struct SENSOR_AE_AWB_CUR_STRUCT));
@@ -2484,6 +2501,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 
 			if (pDelayInfo == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pDelayInfo, 0x0, sizeof(struct SENSOR_DELAY_INFO_STRUCT));
@@ -2521,6 +2540,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 
 			if (pFlashInfo == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pFlashInfo, 0x0, sizeof(struct SENSOR_FLASHLIGHT_AE_INFO_STRUCT));
@@ -2559,6 +2580,8 @@ static inline int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			pPdaf_data = kmalloc(sizeof(char) * PDAF_DATA_SIZE, GFP_KERNEL);
 			if (pPdaf_data == NULL) {
 				PK_ERR(" ioctl allocate mem failed\n");
+				kfree(pFeaturePara_64);
+				kfree(pFeaturePara);
 				return -ENOMEM;
 			}
 			memset(pPdaf_data, 0xff, sizeof(char) * PDAF_DATA_SIZE);

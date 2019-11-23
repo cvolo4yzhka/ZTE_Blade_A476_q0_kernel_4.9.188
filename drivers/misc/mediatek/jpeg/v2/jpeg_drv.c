@@ -153,7 +153,7 @@ static struct JpegDeviceStruct *gJpegqDevs;
 static int nrJpegDevs;
 
 static const struct of_device_id venc_jpg_of_ids[] = {
-	{.compatible = "mediatek,venc_jpg",},
+	{.compatible = "mediatek,JPGENC",},
 	{}
 };
 

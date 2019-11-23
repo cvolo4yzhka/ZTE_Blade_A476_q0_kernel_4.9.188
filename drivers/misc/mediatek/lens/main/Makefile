@@ -85,7 +85,6 @@ obj-y  += common/bu64748af/
 obj-y  += common/dw9714af/
 obj-y  += common/dw9814af/
 obj-y  += common/dw9718af/
-obj-y  += common/fm50af/
 obj-y  += common/dw9718saf/
 obj-y  += common/dw9719taf/
 obj-y  += common/lc898212af/

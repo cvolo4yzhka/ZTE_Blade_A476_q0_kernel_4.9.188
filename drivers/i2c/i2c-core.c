@@ -2513,7 +2513,7 @@ int __i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 	if (static_key_false(&i2c_trace_msg)) {
 		int i;
 		for (i = 0; i < ret; i++)
-			if (msgs[i].flags & I2C_M_RD)
+			if ((msgs[i].flags & I2C_M_RD) && !(msgs[i].ext_flag & I2C_DMA_FLAG))
 				trace_i2c_reply(adap, &msgs[i], i);
 		trace_i2c_result(adap, i, ret);
 	}

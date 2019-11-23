@@ -1133,6 +1133,7 @@ long port_proxy_user_ioctl(struct port_proxy *proxy_p, int ch, unsigned int cmd,
 	char md_protol[] = "DHL";
 	unsigned int sig = 0;
 	unsigned int pid = 0;
+	unsigned int cnt = 0;
 	int retry;
 #ifdef CONFIG_MTK_SIM_LOCK_POWER_ON_WRITE_PROTECT
 	unsigned int val;
@@ -1403,8 +1404,16 @@ long port_proxy_user_ioctl(struct port_proxy *proxy_p, int ch, unsigned int cmd,
 		} else {
 			CCCI_BOOTUP_LOG(md_id, CHAR,
 				"CCCI_IOC_GET_MD_IMG_EXIST: waiting set\n");
-			while (proxy_p->md_img_type_is_set == 0)
+			while (proxy_p->md_img_type_is_set == 0) {
 				msleep(200);
+				cnt++;
+				if(cnt > 50) {
+					CCCI_BOOTUP_LOG(md_id, CHAR,
+						"CCCI_IOC_GET_MD_IMG_EXIST: no setting after 10s\n");
+					ret = -EFAULT;
+					break;
+				}
+			}
 		}
 		CCCI_BOOTUP_LOG(md_id, CHAR,
 			"CCCI_IOC_GET_MD_IMG_EXIST: waiting set done!\n");
