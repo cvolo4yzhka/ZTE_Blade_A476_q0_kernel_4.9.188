@@ -29,6 +29,10 @@
 #include <ddp_aal.h>
 #endif
 
+//GPIO MODE Button-backlight
+#include <asm-generic/gpio.h> 
+//GPIO MODE Button-backlight
+
 #ifdef CONFIG_BACKLIGHT_SUPPORT_LP8557
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
