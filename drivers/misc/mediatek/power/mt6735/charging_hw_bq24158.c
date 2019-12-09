@@ -57,16 +57,11 @@ static CHARGER_TYPE g_charger_type = CHARGER_UNKNOWN;
 int wireless_charger_gpio_number   = (168 | 0x80000000); 
 #endif
 
-#if 0
-#include <cust_gpio_usage.h>
-int gpio_number   = GPIO_SWCHARGER_EN_PIN; 
-int gpio_off_mode = GPIO_SWCHARGER_EN_PIN_M_GPIO;
-int gpio_on_mode  = GPIO_SWCHARGER_EN_PIN_M_GPIO;
-#else
+
 int gpio_number   = (1 | 0x80000000); 
 int gpio_off_mode = 0;
 int gpio_on_mode  = 0;
-#endif
+
 int gpio_off_dir  = GPIO_DIR_OUT;
 int gpio_off_out  = GPIO_OUT_ONE;
 int gpio_on_dir   = GPIO_DIR_OUT;
@@ -201,7 +196,7 @@ const unsigned int CS_VTH[]=
 	 }
  }
 
-
+/*
 static void hw_bc11_dump_register(void)
 {
 	unsigned int reg_val = 0;
@@ -316,7 +311,7 @@ static unsigned int hw_bc11_stepA1(void)
 
    return  wChargerAvail;
 }
- 
+ */
  /*
  static unsigned int hw_bc11_stepB1(void)
  {
@@ -385,7 +380,7 @@ static unsigned int hw_bc11_stepA1(void)
 	return  wChargerAvail;
  }
  */
-
+/*
 static unsigned int hw_bc11_stepA2(void)
 {
    unsigned int wChargerAvail = 0;
@@ -488,7 +483,7 @@ static void hw_bc11_done(void)
    }
    
 }
- 
+ */
  static unsigned int charging_hw_init(void *data)
  {
  	unsigned int status = STATUS_OK;
@@ -730,7 +725,7 @@ kal_bool charging_type_detection_done(void)
  static unsigned int charging_get_charger_type(void *data)
  {
 	 unsigned int status = STATUS_OK;
-#if defined(CONFIG_POWER_EXT)
+#if defined(CONFIG_POWER_EXT) || defined(CONFIG_MTK_FPGA)
 	 *(CHARGER_TYPE*)(data) = STANDARD_HOST;
 #else
 
@@ -743,63 +738,9 @@ kal_bool charging_type_detection_done(void)
 		return status;
 	}
 #endif
-	if(g_charger_type!=CHARGER_UNKNOWN && g_charger_type!=WIRELESS_CHARGER) {
-		*(CHARGER_TYPE*)(data) = g_charger_type;
-		battery_log(BAT_LOG_CRTI, "return %d!\r\n", g_charger_type);
-		return status;
-	}
 
-	charging_type_det_done = KAL_FALSE;
+	*(CHARGER_TYPE *) (data) = hw_charging_get_charger_type();
 
-	/********* Step initial  ***************/		 
-	hw_bc11_init();
- 
-	/********* Step DCD ***************/  
-	if(1 == hw_bc11_DCD())
-	{
-		/********* Step A1 ***************/
-		if(1 == hw_bc11_stepA1())
-		{
-			*(CHARGER_TYPE*)(data) = APPLE_2_1A_CHARGER;
-			battery_log(BAT_LOG_CRTI, "step A1 : Apple 2.1A CHARGER!\r\n");
-		}	 
-		else
-		{
-			*(CHARGER_TYPE*)(data) = NONSTANDARD_CHARGER;
-			battery_log(BAT_LOG_CRTI, "step A1 : Non STANDARD CHARGER!\r\n");
-		}
-	}
-	else
-	{
-		 /********* Step A2 ***************/
-		 if(1 == hw_bc11_stepA2())
-		 {
-			 /********* Step B2 ***************/
-			 if(1 == hw_bc11_stepB2())
-			 {
-				 *(CHARGER_TYPE*)(data) = STANDARD_CHARGER;
-				 battery_log(BAT_LOG_CRTI, "step B2 : STANDARD CHARGER!\r\n");
-			 }
-			 else
-			 {
-				 *(CHARGER_TYPE*)(data) = CHARGING_HOST;
-				 battery_log(BAT_LOG_CRTI, "step B2 :  Charging Host!\r\n");
-			 }
-		 }
-		 else
-		 {
-			*(CHARGER_TYPE*)(data) = STANDARD_HOST;
-			 battery_log(BAT_LOG_CRTI, "step A2 : Standard USB Host!\r\n");
-		 }
- 
-	}
- 
-	 /********* Finally setting *******************************/
-	 hw_bc11_done();
-
- 	charging_type_det_done = KAL_TRUE;
-
-	g_charger_type = *(CHARGER_TYPE*)(data);
 #endif
 	 return status;
 }
