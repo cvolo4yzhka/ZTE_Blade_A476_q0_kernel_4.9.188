@@ -1,6 +1,11 @@
+#include <linux/interrupt.h>
+#include <linux/i2c.h>
+#include <linux/slab.h>
+#include <linux/irq.h>
+#include <linux/miscdevice.h>
 #include <linux/types.h>
-#include <linux/init.h>		/* For init/exit macros */
-#include <linux/module.h>	/* For MODULE_ marcros  */
+#include <linux/init.h>         /* For init/exit macros */
+#include <linux/module.h>       /* For MODULE_ marcros  */
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
@@ -10,27 +15,30 @@
 #include <linux/of_address.h>
 #endif
 #include <mt-plat/charging.h>
-#include "bq24158.h"
 
+#include "bq24158.h"
 
 /**********************************************************
   *
   *   [I2C Slave Setting] 
   *
   *********************************************************/
-//#define bq24158_SLAVE_ADDR_WRITE   0xD4
-//#define bq24158_SLAVE_ADDR_Read    0xD5
-//#define BQ24158_BUSNUM 1
+#define bq24158_SLAVE_ADDR_WRITE   0xD4
+#define bq24158_SLAVE_ADDR_Read    0xD5
+
+struct pinctrl *switchchgctrl = NULL;
+struct pinctrl_state *switchchg_en_high = NULL;
+struct pinctrl_state *switchchg_en_low = NULL;
 
 static struct i2c_client *new_client = NULL;
-static const struct i2c_device_id bq24158_i2c_id[] = {{"bq24158",0},{}};   
-kal_bool chargin_hw_init_done = KAL_FALSE; 
+static const struct i2c_device_id bq24158_i2c_id[] = {{"bq24158",0},{}};
+kal_bool chargin_hw_init_done = KAL_FALSE;
 static int bq24158_driver_probe(struct i2c_client *client, const struct i2c_device_id *id);
 
 #ifdef CONFIG_OF
 static const struct of_device_id bq24158_of_match[] = {
-	{.compatible = "mediatek,swithing_charger",},
-	{},
+            {.compatible = "mediatek,swithing_charger",},
+                    {},
 };
 
 MODULE_DEVICE_TABLE(of, bq24158_of_match);
@@ -39,9 +47,10 @@ MODULE_DEVICE_TABLE(of, bq24158_of_match);
 static struct i2c_driver bq24158_driver = {
     .driver = {
         .name    = "bq24158",
-    #ifdef CONFIG_OF
+#ifdef CONFIG_OF
         .of_match_table = bq24158_of_match,
-    #endif
+#endif
+
     },
     .probe       = bq24158_driver_probe,
     .id_table    = bq24158_i2c_id,
@@ -66,29 +75,34 @@ int bq24158_read_byte(unsigned char cmd, unsigned char *returnData)
     char     readData = 0;
     int      ret=0;
 
+    if (!new_client) {
+        pr_err("error: access bq24158 before driver ready\n");
+        return 0;
+    }
+
     mutex_lock(&bq24158_i2c_access);
-    
-    new_client->addr = ((new_client->addr) & I2C_MASK_FLAG) | I2C_WR_FLAG;    
-    //new_client->ext_flag=((new_client->ext_flag ) & I2C_MASK_FLAG ) | I2C_WR_FLAG | I2C_DIRECTION_FLAG;
+
+    //new_client->addr = ((new_client->addr) & I2C_MASK_FLAG) | I2C_WR_FLAG;
+    new_client->ext_flag=((new_client->ext_flag ) & I2C_MASK_FLAG ) | I2C_WR_FLAG | I2C_DIRECTION_FLAG;
 
     cmd_buf[0] = cmd;
-    ret = i2c_master_send(new_client, &cmd_buf[0], (1<<8 | 1));
+    ret = i2c_master_send(new_client, &cmd_buf[0], ((1 << 8 ) | 1));
     if (ret < 0) 
-    {    
-        new_client->addr = new_client->addr & I2C_MASK_FLAG;
-        //new_client->ext_flag=0;
+    {
+        //new_client->addr = new_client->addr & I2C_MASK_FLAG;
+        new_client->ext_flag=0;
 
         mutex_unlock(&bq24158_i2c_access);
         return 0;
     }
-    
+
     readData = cmd_buf[0];
     *returnData = readData;
 
-    new_client->addr = new_client->addr & I2C_MASK_FLAG;
-    //new_client->ext_flag=0;
-    
-    mutex_unlock(&bq24158_i2c_access);    
+    //new_client->addr = new_client->addr & I2C_MASK_FLAG;
+    new_client->ext_flag=0;
+
+    mutex_unlock(&bq24158_i2c_access);
     return 1;
 }
 
@@ -96,23 +110,28 @@ int bq24158_write_byte(unsigned char cmd, unsigned char writeData)
 {
     char    write_data[2] = {0};
     int     ret=0;
-    
+
+    if (!new_client) {
+        pr_err("error: access bq24158 before driver ready\n");
+        return 0;
+    }
+
     mutex_lock(&bq24158_i2c_access);
-    
+
     write_data[0] = cmd;
     write_data[1] = writeData;
-    
+
     new_client->ext_flag=((new_client->ext_flag ) & I2C_MASK_FLAG ) | I2C_DIRECTION_FLAG;
-    
+
     ret = i2c_master_send(new_client, write_data, 2);
     if (ret < 0) 
     {
-       
+
         new_client->ext_flag=0;
         mutex_unlock(&bq24158_i2c_access);
         return 0;
     }
-    
+
     new_client->ext_flag=0;
     mutex_unlock(&bq24158_i2c_access);
     return 1;
@@ -136,9 +155,9 @@ unsigned int bq24158_read_interface (unsigned char RegNum, unsigned char *val, u
 	
     bq24158_reg &= (MASK << SHIFT);
     *val = (bq24158_reg >> SHIFT);
-	
+
 	battery_log(BAT_LOG_FULL,"[bq24158_read_interface] val=0x%x\n", *val);
-	
+
     return ret;
 }
 
@@ -151,7 +170,7 @@ unsigned int bq24158_config_interface (unsigned char RegNum, unsigned char val, 
 
     ret = bq24158_read_byte(RegNum, &bq24158_reg);
     battery_log(BAT_LOG_FULL,"[bq24158_config_interface] Reg[%x]=0x%x\n", RegNum, bq24158_reg);
-    
+
     bq24158_reg &= ~(MASK << SHIFT);
     bq24158_reg |= (val << SHIFT);
 
@@ -177,9 +196,9 @@ unsigned int bq24158_config_interface (unsigned char RegNum, unsigned char val, 
 
 //write one register directly
 unsigned int bq24158_reg_config_interface (unsigned char RegNum, unsigned char val)
-{   
+{
     int ret = 0;
-    
+
     ret = bq24158_write_byte(RegNum, val);
 
     return ret;
@@ -194,7 +213,7 @@ EXPORT_SYMBOL(bq24158_reg_config_interface);
 
 void bq24158_set_tmr_rst(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON0), 
                                     (unsigned char)(val),
@@ -281,7 +300,7 @@ void bq24158_set_input_charging_current(unsigned int val)
 
 void bq24158_set_v_low(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON1), 
                                     (unsigned char)(val),
@@ -292,7 +311,7 @@ void bq24158_set_v_low(unsigned int val)
 
 void bq24158_set_te(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON1), 
                                     (unsigned char)(val),
@@ -303,7 +322,7 @@ void bq24158_set_te(unsigned int val)
 
 void bq24158_set_ce(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON1), 
                                     (unsigned char)(val),
@@ -314,7 +333,7 @@ void bq24158_set_ce(unsigned int val)
 
 void bq24158_set_hz_mode(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON1), 
                                     (unsigned char)(val),
@@ -325,7 +344,7 @@ void bq24158_set_hz_mode(unsigned int val)
 
 void bq24158_set_opa_mode(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON1), 
                                     (unsigned char)(val),
@@ -338,7 +357,7 @@ void bq24158_set_opa_mode(unsigned int val)
 
 void bq24158_set_oreg(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON2), 
                                     (unsigned char)(val),
@@ -349,7 +368,7 @@ void bq24158_set_oreg(unsigned int val)
 
 void bq24158_set_otg_pl(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON2), 
                                     (unsigned char)(val),
@@ -360,7 +379,7 @@ void bq24158_set_otg_pl(unsigned int val)
 
 void bq24158_set_otg_en(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON2), 
                                     (unsigned char)(val),
@@ -414,7 +433,7 @@ unsigned int bq24158_get_revision(void)
 
 void bq24158_set_reset(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON4), 
                                     (unsigned char)(val),
@@ -425,7 +444,7 @@ void bq24158_set_reset(unsigned int val)
 
 void bq24158_set_iocharge(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON4), 
                                     (unsigned char)(val),
@@ -436,7 +455,7 @@ void bq24158_set_iocharge(unsigned int val)
 
 void bq24158_set_iterm(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON4), 
                                     (unsigned char)(val),
@@ -449,7 +468,7 @@ void bq24158_set_iterm(unsigned int val)
 
 void bq24158_set_dis_vreg(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON5), 
                                     (unsigned char)(val),
@@ -460,7 +479,7 @@ void bq24158_set_dis_vreg(unsigned int val)
 
 void bq24158_set_io_level(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON5), 
                                     (unsigned char)(val),
@@ -497,7 +516,7 @@ unsigned int bq24158_get_en_level(void)
 
 void bq24158_set_vsp(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON5), 
                                     (unsigned char)(val),
@@ -521,7 +540,7 @@ void bq24158_set_i_safe(unsigned int val)
 
 void bq24158_set_v_safe(unsigned int val)
 {
-    unsigned int ret=0;    
+    unsigned int ret=0;
 
     ret=bq24158_config_interface(   (unsigned char)(bq24158_CON6), 
                                     (unsigned char)(val),
@@ -538,11 +557,11 @@ void bq24158_set_v_safe(unsigned int val)
 void bq24158_dump_register(void)
 {
     int i=0;
-    printk("[bq24158] ");
+    printk("[bq24158_dump_register] ");
     for (i=0;i<bq24158_REG_NUM;i++)
     {
         bq24158_read_byte(i, &bq24158_reg[i]);
-        printk("[0x%x]=0x%x ", i, bq24158_reg[i]);        
+        printk("[0x%x]=0x%x ", i, bq24158_reg[i]);
     }
     printk("\n");
 }
@@ -552,7 +571,7 @@ extern int g_enable_high_vbat_spec;
 extern int g_pmic_cid;
 
 void bq24158_hw_init(void)
-{    
+{
     if(g_enable_high_vbat_spec == 1)
     {
         if(g_pmic_cid == 0x1020)
@@ -575,7 +594,7 @@ void bq24158_hw_init(void)
 #endif
 
 static int bq24158_driver_probe(struct i2c_client *client, const struct i2c_device_id *id) 
-{             
+{
     int err=0; 
 
     battery_log(BAT_LOG_CRTI,"[bq24158_driver_probe] \n");
@@ -586,16 +605,17 @@ static int bq24158_driver_probe(struct i2c_client *client, const struct i2c_devi
     }    
     memset(new_client, 0, sizeof(struct i2c_client));
 
-    new_client = client;    
+    new_client = client;
+    client->addr = bq24158_SLAVE_ADDR_WRITE>>1;
 
     //---------------------
   //  bq24158_hw_init();
 
-//    bq24158_reg_config_interface(0x06,0x7a); // ISAFE = 1050mA, VSAFE = 4.4V
+//    bq24158_reg_config_interface(0x06,0x47); // ISAFE = 1050mA, VSAFE = 4.34V
     bq24158_dump_register();
     chargin_hw_init_done = KAL_TRUE;
 	
-    return 0;                                                                                       
+    return 0;
 
 exit:
     return err;
@@ -613,45 +633,100 @@ static ssize_t show_bq24158_access(struct device *dev,struct device_attribute *a
     battery_log(BAT_LOG_FULL,"[show_bq24158_access] 0x%x\n", g_reg_value_bq24158);
     return sprintf(buf, "%u\n", g_reg_value_bq24158);
 }
-static ssize_t store_bq24158_access(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t store_bq24158_access(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
     int ret=0;
     char *pvalue = NULL;
     unsigned int reg_value = 0;
     unsigned int reg_address = 0;
-    
+
     battery_log(BAT_LOG_FULL,"[store_bq24158_access] \n");
-    
+
     if(buf != NULL && size != 0)
     {
         //battery_log(BAT_LOG_FULL,"[store_bq24158_access] buf is %s and size is %d \n",buf,size);
         reg_address = simple_strtoul(buf,&pvalue,16);
-        
+
         if(size > 3)
-        {        
-            reg_value = simple_strtoul((pvalue+1),NULL,16);        
+        {
+            reg_value = simple_strtoul((pvalue+1),NULL,16);
             battery_log(BAT_LOG_FULL,"[store_bq24158_access] write bq24158 reg 0x%x with value 0x%x !\n",reg_address,reg_value);
             ret=bq24158_config_interface(reg_address, reg_value, 0xFF, 0x0);
         }
         else
-        {    
+        {
             ret=bq24158_read_interface(reg_address, &g_reg_value_bq24158, 0xFF, 0x0);
             battery_log(BAT_LOG_FULL,"[store_bq24158_access] read bq24158 reg 0x%x with value 0x%x !\n",reg_address,g_reg_value_bq24158);
             battery_log(BAT_LOG_FULL,"[store_bq24158_access] Please use \"cat bq24158_access\" to get value\r\n");
-        }        
-    }    
+        }
+    }
     return size;
 }
 static DEVICE_ATTR(bq24158_access, 0664, show_bq24158_access, store_bq24158_access); //664
 
-static int bq24158_user_space_probe(struct platform_device *dev)    
-{    
+int bq24158_gpio_init(struct platform_device *pdev)
+{
+    int ret = 0;
+
+    battery_log(BAT_LOG_CRTI,"##### %s : done +++++\n", __func__);
+
+    switchchgctrl = devm_pinctrl_get(&pdev->dev);
+    if (IS_ERR(switchchgctrl)) {
+        dev_err(&pdev->dev, "Cannot find switchchgctrl pinctrl!");
+        ret = PTR_ERR(switchchgctrl);
+    }
+    /*chgr_en_high/chgr_en_low Ping initialization */
+    switchchg_en_high = pinctrl_lookup_state(switchchgctrl, "chgr_en_high");
+    if (IS_ERR(switchchg_en_high)) {
+        ret = PTR_ERR(switchchg_en_high);
+        battery_log(BAT_LOG_CRTI,"%s : pinctrl err, switchchg_en_high\n", __func__);
+    }
+
+    switchchg_en_low = pinctrl_lookup_state(switchchgctrl, "chgr_en_low");
+    if (IS_ERR(switchchg_en_low)) {
+        ret = PTR_ERR(switchchg_en_low);
+        battery_log(BAT_LOG_CRTI,"%s : pinctrl err, switchchg_en_low\n", __func__);
+    }
+
+    battery_log(BAT_LOG_CRTI,"##### %s : done -----\n", __func__);
+
+    return ret;
+}
+
+int bq24158_gpio_set(int value)
+{
+    int ret = 0;
+
+    battery_log(BAT_LOG_CRTI,"***** %s : done +++++ \n", __func__);
+
+    if (value == 0 && !IS_ERR(switchchg_en_low))
+        pinctrl_select_state(switchchgctrl, switchchg_en_low);
+    else if (value > 0 && !IS_ERR(switchchg_en_low))
+        pinctrl_select_state(switchchgctrl, switchchg_en_high);
+    else
+        battery_log(BAT_LOG_CRTI,"%s : pinctrl err,  Val %d, switchchg_en\n", __func__ ,value);
+
+    battery_log(BAT_LOG_CRTI,"***** %s : done -----\n", __func__);
+
+    return ret;
+}
+
+#ifdef CONFIG_OF
+static const struct of_device_id SWCHARGER_HW_of_ids[] = {
+    { .compatible = "mediatek, switching_charger", },
+    {}
+};
+#endif
+
+static int bq24158_user_space_probe(struct platform_device *dev)
+{
     int ret_device_file = 0;
 
     battery_log(BAT_LOG_CRTI,"******** bq24158_user_space_probe!! ********\n" );
-    
+    bq24158_gpio_init(dev);
+
     ret_device_file = device_create_file(&(dev->dev), &dev_attr_bq24158_access);
-    
+
     return 0;
 }
 
@@ -664,6 +739,9 @@ static struct platform_driver bq24158_user_space_driver = {
     .probe      = bq24158_user_space_probe,
     .driver     = {
         .name = "bq24158-user",
+#ifdef CONFIG_OF
+        .of_match_table = SWCHARGER_HW_of_ids,
+#endif
     },
 };
 
@@ -671,11 +749,11 @@ static struct platform_driver bq24158_user_space_driver = {
 //static struct i2c_board_info __initdata i2c_bq24158 = { I2C_BOARD_INFO("bq24158", (bq24158_SLAVE_ADDR_WRITE>>1))};
 
 static int __init bq24158_init(void)
-{    
+{
     int ret=0;
-    
+
     battery_log(BAT_LOG_CRTI,"[bq24158_init] init start\n");
-    
+
     //i2c_register_board_info(BQ24158_BUSNUM, &i2c_bq24158, 1);
 
     if(i2c_add_driver(&bq24158_driver)!=0)
@@ -688,18 +766,20 @@ static int __init bq24158_init(void)
     }
 
     // bq24158 user space access interface
+#ifndef CONFIG_OF
     ret = platform_device_register(&bq24158_user_space_device);
     if (ret) {
         battery_log(BAT_LOG_CRTI,"****[bq24158_init] Unable to device register(%d)\n", ret);
         return ret;
-    }    
+    }
+#endif
     ret = platform_driver_register(&bq24158_user_space_driver);
     if (ret) {
         battery_log(BAT_LOG_CRTI,"****[bq24158_init] Unable to register driver (%d)\n", ret);
         return ret;
     }
-    
-    return 0;        
+
+    return 0;
 }
 
 static void __exit bq24158_exit(void)
@@ -709,7 +789,7 @@ static void __exit bq24158_exit(void)
 
 module_init(bq24158_init);
 module_exit(bq24158_exit);
-   
+
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("I2C bq24158 Driver");
 MODULE_AUTHOR("James Lo<james.lo@mediatek.com>");

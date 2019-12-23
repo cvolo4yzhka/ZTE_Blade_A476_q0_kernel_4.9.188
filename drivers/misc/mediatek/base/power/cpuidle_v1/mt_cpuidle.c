@@ -829,7 +829,7 @@ static int mt_cpu_dormant_abort(unsigned long index)
 		mt_secure_call(MC_FC_SLEEP_CANCELLED, 0, 0, 0, 0);
 #elif defined(CONFIG_TRUSTY) && (defined(CONFIG_MACH_MT6580) || defined(CONFIG_ARCH_MT6570))
 	if (cpuid == 0)
-		mt_trusty_call(SMC_FC_CPU_DORMANT_CANCEL, 0, 0, 0, 0);
+		mt_trusty_call(SMC_FC_CPU_DORMANT_CANCEL, 0, 0, 0);
 #endif
 
 	/* restore l2rstdisable setting */

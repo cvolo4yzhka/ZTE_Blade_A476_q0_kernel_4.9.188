@@ -99,9 +99,7 @@ endif
 endif
 obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) += gcpu/
 obj-$(CONFIG_MTK_IN_HOUSE_TEE_SUPPORT) += gcpu/
-ifeq ($(CONFIG_HAVE_MTK_IN_HOUSE_TEE_SUPPORT),y)
 obj-$(CONFIG_TRUSTY) += gcpu/
-endif
 obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) += gud/
 obj-$(CONFIG_MMPROFILE) += mmp/
 obj-$(CONFIG_MTK_M4U)	+= m4u/

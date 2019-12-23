@@ -491,9 +491,8 @@ void mtk_wdt_set_c2k_sysrst(unsigned int flag)
 {
 #ifdef CONFIG_OF
 	struct device_node *np_rgu;
-#endif
 	unsigned int ret;
-#ifdef CONFIG_OF
+
 	np_rgu = of_find_compatible_node(NULL, NULL, rgu_of_match[0].compatible);
 
 	if (!toprgu_base) {
@@ -502,18 +501,22 @@ void mtk_wdt_set_c2k_sysrst(unsigned int flag)
 			pr_err("mtk_wdt_set_c2k_sysrst RGU iomap failed\n");
 		pr_debug("mtk_wdt_set_c2k_sysrst RGU base: 0x%p  RGU irq: %d\n", toprgu_base, wdt_irq_id);
 	}
-#endif
-	spin_lock(&rgu_reg_operation_spinlock);
-	if (1 == flag) {
-		ret = __raw_readl(MTK_WDT_SWSYSRST);
-		ret &= (~(1<<C2K_SYSRST_SHIFT));
-		mt_reg_sync_writel((ret|MTK_WDT_SWSYS_RST_KEY), MTK_WDT_SWSYSRST);
-	} else { /* means set x bit */
-		ret = __raw_readl(MTK_WDT_SWSYSRST);
-		ret |= ((1<<C2K_SYSRST_SHIFT));
-		mt_reg_sync_writel((ret|MTK_WDT_SWSYS_RST_KEY), MTK_WDT_SWSYSRST);
+
+
+	if (toprgu_base) {
+		spin_lock(&rgu_reg_operation_spinlock);
+		if (1 == flag) {
+			ret = __raw_readl(MTK_WDT_SWSYSRST);
+			ret &= (~(1<<C2K_SYSRST_SHIFT));
+			mt_reg_sync_writel((ret|MTK_WDT_SWSYS_RST_KEY), MTK_WDT_SWSYSRST);
+		} else { /* means set x bit */
+			ret = __raw_readl(MTK_WDT_SWSYSRST);
+			ret |= ((1<<C2K_SYSRST_SHIFT));
+			mt_reg_sync_writel((ret|MTK_WDT_SWSYS_RST_KEY), MTK_WDT_SWSYSRST);
+		}
+		spin_unlock(&rgu_reg_operation_spinlock);
 	}
-	spin_unlock(&rgu_reg_operation_spinlock);
+#endif
 }
 
 

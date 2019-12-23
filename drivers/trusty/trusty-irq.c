@@ -297,15 +297,15 @@ static int trusty_irq_cpu_notify(struct notifier_block *nb,
 	dev_dbg(is->dev, "%s: 0x%lx\n", __func__, action);
 
 	switch (action & ~CPU_TASKS_FROZEN) {
-	case CPU_STARTING:
+/*	case CPU_STARTING:
 		trusty_irq_cpu_up(is);
-		break;
+		break;*/
 	case CPU_DEAD:
 		trusty_irq_cpu_dead(is);
 		break;
-	case CPU_DYING:
+/*	case CPU_DYING:
 		trusty_irq_cpu_down(is);
-		break;
+		break;*/
 	}
 
 	return NOTIFY_OK;

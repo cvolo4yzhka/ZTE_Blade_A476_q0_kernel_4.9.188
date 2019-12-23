@@ -156,7 +156,7 @@ obj-$(CONFIG_RPMSG)		+= rpmsg/
 # Virtualization drivers
 obj-$(CONFIG_VIRT_DRIVERS)	+= virt/
 obj-$(CONFIG_HYPERV)		+= hv/
-
+obj-$(CONFIG_TRUSTY)		+= trusty/
 obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
 obj-$(CONFIG_EXTCON)		+= extcon/
 obj-$(CONFIG_MEMORY)		+= memory/

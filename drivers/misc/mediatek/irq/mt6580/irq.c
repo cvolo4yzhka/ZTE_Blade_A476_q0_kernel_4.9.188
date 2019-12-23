@@ -1315,7 +1315,7 @@ int request_fiq(int irq, fiq_isr_handler handler, unsigned long irq_flags,
 {
 	int i;
 	unsigned long flags;
-#ifndef CONFIG_TRUSTY_WDT_FIQ_ARMV7_SUPPORT
+#if 1 // CONFIG_TRUSTY_WDT_FIQ_ARMV7_SUPPORT
 	struct irq_data data;
 #endif
 
@@ -1332,6 +1332,8 @@ int request_fiq(int irq, fiq_isr_handler handler, unsigned long irq_flags,
 
 			spin_unlock_irqrestore(&irq_lock, flags);
 #ifdef CONFIG_TRUSTY_WDT_FIQ_ARMV7_SUPPORT
+			data.irq = irq;
+			mt_irq_set_type(&data, irq_flags);
 			if (trusty_fast_call32_nodev(SMC_FC_REQUEST_FIQ, irq, true, 0) != 0)
 				return -1;
 #else

@@ -1097,11 +1097,11 @@ firmware_class.path=/vendor/firmware";
 			interrupts = <GIC_SPI 76 IRQ_TYPE_EDGE_FALLING>;
 		};
 
-/*		PWM@0x11006000 {
+		PWM@0x11006000 {
 			compatible = "mediatek,pwm";
 			reg = <0x11006000 0x1000>;
 			interrupts = <0 77 0x8>;
-		};*/
+		};
 		syscfg_pctl_a: syscfg_pctl_a@0x10211000 {
 			compatible = "mediatek,mt6735-pctl-a-syscfg", "syscon";
 			reg = <0x10211000 0x1000>;
@@ -1786,6 +1786,9 @@ firmware_class.path=/vendor/firmware";
 			compatible = "mediatek,pwm";
 			reg = <0x11006000 0x1000>;
 			interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_LOW>;
+		};
+				switching_charger:switching_charger@0 {
+			compatible = "mediatek, switching_charger";
 		};
 	};
 	lcm: lcm {

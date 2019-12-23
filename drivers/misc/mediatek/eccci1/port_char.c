@@ -128,6 +128,10 @@ READ_START:
 	}
 
 	skb = skb_peek(&port->rx_skb_list);
+	if (skb == NULL) {
+		CCCI_ERROR_LOG(port->md_id, CHAR, "%s:skb_peek fail\n", __func__);
+		goto exit;
+	}
 	read_len = skb->len;
 
 	if (count >= read_len) {

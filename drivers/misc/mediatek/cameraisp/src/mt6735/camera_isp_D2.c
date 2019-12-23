@@ -6055,6 +6055,10 @@ static MINT32 ISP_remove(struct platform_device *pDev)
 	/* Release IRQ */
 	disable_irq(g_IspInfo.IrqNum);
 	IrqNum = platform_get_irq(pDev, 0);
+	if (IrqNum < 0){
+		dev_err(&pDev->dev, "platform_get_irq error. get invalid IrqNum\n");
+		return IrqNum;
+	}
 	free_irq(IrqNum, NULL);
 
 	/* cam 3 */

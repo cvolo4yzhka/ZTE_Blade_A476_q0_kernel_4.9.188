@@ -6332,7 +6332,11 @@ static int primary_display_merge_session_cmd(struct disp_session_config *config)
 
 	mutex_unlock(&session_config_mutex);
 
+#ifdef CONFIG_MTK_OVL_REDUCE_SUPPORT
+	session_input->config_layer_num = OVL_LAYER_NUM - 1;
+#else
 	session_input->config_layer_num = OVL_LAYER_NUM;
+#endif
 	if (isAEEEnabled) {
 		int aee_layer = primary_display_get_option("ASSERT_LAYER");
 
@@ -7665,7 +7669,11 @@ int primary_display_get_info(void *info)
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 		dispif_info->maxLayerNum = pgc->max_layer - 1;
 #else
+#ifdef CONFIG_MTK_OVL_REDUCE_SUPPORT
+		dispif_info->maxLayerNum = pgc->max_layer - 1;
+#else
 		dispif_info->maxLayerNum = pgc->max_layer;
+#endif
 #endif
 #endif
 	/* DISPDBG("available layer num=%d\n", dispif_info->maxLayerNum); */

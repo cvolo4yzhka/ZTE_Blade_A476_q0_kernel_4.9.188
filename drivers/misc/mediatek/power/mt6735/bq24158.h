@@ -21,6 +21,7 @@
 #define _bq24158_SW_H_
 
 #define HIGH_BATTERY_VOLTAGE_SUPPORT
+//#include "mt_spm.h"
 
 #define bq24158_CON0      0x00
 #define bq24158_CON1      0x01
@@ -134,6 +135,7 @@
   *
   *********************************************************/
 //CON0----------------------------------------------------
+extern int bq24158_gpio_set(int value);
 extern void bq24158_set_tmr_rst(unsigned int val);
 extern unsigned int bq24158_get_otg_status(void);
 extern void bq24158_set_en_stat(unsigned int val);

@@ -3924,8 +3924,20 @@ static MINT32 ISP_ED_BufQue_CTRL_FUNC_FRMB(ISP_ED_BUFQUE_STRUCT_FRMB param)
 		/* ////////////////////////////////////////////////////////////////////// */
 		idx2 = ISP_ED_BufQue_Get_FirstMatBuf(param, P2_EDBUF_RLIST_TAG, 1);
 		if (param.ctrl == ISP_ED_BUFQUE_CTRL_DEQUE_SUCCESS) {
+			if (idx2 == -1) {
+			    spin_unlock(&(SpinLockEDBufQueList));
+			    LOG_ERR("ERRRRRRRRRRR findmatch index2 fail");
+			    ret = -EFAULT;
+			    return ret;
+		    }
 			P2_EDBUF_RingList[idx2].bufSts = ISP_ED_BUF_STATE_DEQUE_SUCCESS;
 		} else {
+			if (idx2 == -1) {
+			    spin_unlock(&(SpinLockEDBufQueList));
+			    LOG_ERR("ERRRRRRRRRRR findmatch index2 fail");
+			    ret = -EFAULT;
+			    return ret;
+		    }
 			P2_EDBUF_RingList[idx2].bufSts = ISP_ED_BUF_STATE_DEQUE_FAIL;
 		}
 		/* [2]update dequeued num in managed buffer list */

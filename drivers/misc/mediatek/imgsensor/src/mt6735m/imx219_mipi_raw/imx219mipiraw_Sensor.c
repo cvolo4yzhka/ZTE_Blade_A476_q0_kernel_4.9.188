@@ -573,12 +573,14 @@ static kal_uint16 gain2reg(const kal_uint16 gain)
 
 
     }
+	/*
     if(gain != IMX219MIPI_sensorGainMapping[iI][0])
     {
          LOG_INF("Gain mapping don't correctly:%d %d \n", gain, IMX219MIPI_sensorGainMapping[iI][0]);
     }
 	LOG_INF("exit IMX219MIPIGain2Reg function\n");
-    return IMX219MIPI_sensorGainMapping[iI-1][1];
+    */
+	return IMX219MIPI_sensorGainMapping[iI][1];
 	//return NONE;
 
 }

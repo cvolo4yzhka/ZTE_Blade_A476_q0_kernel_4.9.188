@@ -126,7 +126,7 @@
 	alsps_intpin_cfg: alspspincfg {
 
 		pins_cmd_dat {
-			pins = <PINMUX_GPIO9__FUNC_GPIO9>;
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
 			slew-rate = <0>;
 			bias-pull-up = <00>;
 		};
@@ -425,6 +425,31 @@
 	status = "okay";
 };
 /* USB GPIO Kernal Standardization end */
+&pio {
+	swcharger_pins_chgr_en_low: chgr_en_low@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	swcharger_pins_chgr_en_high: chgr_en_high@1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	swcharger_pins_default: swchargerdefault {
+	};
+};
+&switching_charger {
+	pinctrl-names = "default", "chgr_en_low", "chgr_en_high";
+	pinctrl-0 = <&swcharger_pins_default>;
+	pinctrl-1 = <&swcharger_pins_chgr_en_low>;
+	pinctrl-2 = <&swcharger_pins_chgr_en_high>;
+	status = "okay";
+};
 
 #include <zte_blade_a476/cust.dtsi>
 /*End of this file, DO NOT ADD ANYTHING HERE*/
