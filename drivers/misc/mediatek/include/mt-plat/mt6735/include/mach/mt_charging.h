@@ -118,6 +118,6 @@
 #endif
 
 #define MTK_PLUG_OUT_DETECTION
-#define CHARGING_HOST_SUPPORT							 
+//#define CHARGING_HOST_SUPPORT		
 
 #endif /* _CUST_BAT_H_ */

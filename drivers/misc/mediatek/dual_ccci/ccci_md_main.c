@@ -1325,8 +1325,8 @@ void ccci_aed(int md_id, unsigned int dump_flag, char *aed_str)
 				     ex_log_len);
 	}
 #if defined(CONFIG_MTK_AEE_FEATURE) && defined(ENABLE_AEE_MD_EE)
-	aed_md_exception(ex_log_addr, ex_log_len, md_img_addr, md_img_len,
-			 buff);
+	aed_md_exception_api(ex_log_addr, ex_log_len, md_img_addr, md_img_len,
+				buff, DB_OPT_FTRACE);
 #endif
 }
 
