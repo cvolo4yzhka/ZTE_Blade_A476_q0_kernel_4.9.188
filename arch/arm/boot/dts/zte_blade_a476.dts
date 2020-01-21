@@ -428,14 +428,14 @@
 &pio {
 	swcharger_pins_chgr_en_low: chgr_en_low@0 {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO1__FUNC_GPIO1>;
+			pins = <PINMUX_GPIO1__FUNC_GPIO1>;
 			slew-rate = <1>;
 			output-low;
 		};
 	};
 	swcharger_pins_chgr_en_high: chgr_en_high@1 {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO1__FUNC_GPIO1>;
+			pins = <PINMUX_GPIO1__FUNC_GPIO1>;
 			slew-rate = <1>;
 			output-high;
 		};
