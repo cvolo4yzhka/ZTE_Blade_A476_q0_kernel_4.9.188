@@ -83,7 +83,9 @@ struct vcorefs_profile {
 	bool freq_dfs;
 	bool ddr_dfs;
 	bool sdio_lock;
-	int error_code;
+	/* for Autok Emmc */
+	bool autok_lock;
+	unsigned int active_autok_kr;
 	unsigned int log_mask;
 
 	/* for Stay-LV */
@@ -100,6 +102,7 @@ struct vcorefs_profile {
 	unsigned int curr_venc_khz;
 	unsigned int curr_axi_khz;
 	unsigned int curr_qtrhalf_khz;
+	int error_code;
 };
 
 struct opp_profile {
@@ -113,6 +116,11 @@ struct opp_profile {
 struct kicker_profile {
 	int opp;
 };
+
+/**************************************
+ * AUTOK_EMMC
+ **************************************/
+#define AUTOK_EMMC	1
 
 /**************************************
  *
@@ -137,6 +145,8 @@ static struct vcorefs_profile vcorefs_ctrl = {
 	.late_init_opp_done	= 0,
 	.init_opp_perf		= 0,
 	.kr_req_mask		= 0,
+	.autok_lock		= 0,
+	.active_autok_kr	= 0,
 	.late_init_opp		= OPPI_LOW_PWR,
 
 	.curr_vcore_uv		= VCORE_1_P_15_UV,
@@ -195,11 +205,20 @@ static struct kicker_profile kicker_table[] = {
 	[KIR_BOOTUP] = {
 		.opp    = OPP_OFF,
 	},
+	[KIR_AUTOK_EMMC] = {
+		.opp    = OPP_OFF,
+	},
 	[KIR_SYSFS] = {
 		.opp	= OPP_OFF,
 	}
 };
-
+/*************************************
+ * weak reference API for emmc_autok
+ *************************************/
+__weak int emmc_autok(void)
+{
+  	return 0;
+}
 /**************************************
  * Vcore Control Function
  **************************************/
@@ -307,7 +326,8 @@ static int set_vcore_with_opp(enum dvfs_kicker kicker, unsigned int opp)
 
 	pwrctrl->curr_vcore_uv = get_vcore_uv();
 
-	vcorefs_crit_mask("opp: %u, vcore: %u(%u) %s\n",
+	vcorefs_crit_mask("kicker:%d, opp: %u, vcore: %u(%u) %s\n",
+			  kicker,
 			  opp,
 			  opp_ctrl_table[opp].vcore_uv, pwrctrl->curr_vcore_uv,
 			  pwrctrl->vcore_dvs ? "" : "[X]");
@@ -326,11 +346,12 @@ static int set_freq_with_opp(enum dvfs_kicker kicker, unsigned int opp)
 	struct opp_profile *opp_ctrl_table = opp_table;
 	int r = 0;
 
-	vcorefs_crit_mask("opp: %u, faxi: %u(%u)"
+	vcorefs_crit_mask("kicker: %d, opp: %u, faxi: %u(%u)"
 #ifndef VCOREFS_FVENC_NOCTRL
 			  ", fvenc: %u(%u)"
 #endif
 			  " %s\n",
+			  kicker,
 			  opp,
 			  opp_ctrl_table[opp].axi_khz, pwrctrl->curr_axi_khz,
 #ifndef VCOREFS_FVENC_NOCTRL
@@ -386,7 +407,8 @@ static int set_fddr_with_opp(enum dvfs_kicker kicker, unsigned int opp)
 
 	pwrctrl->curr_ddr_khz = get_ddr_khz();
 
-	vcorefs_crit_mask("opp: %u, fddr: %u(%u) %s\n",
+	vcorefs_crit_mask("kicker: %d, opp: %u, fddr: %u(%u) %s\n",
+			  kicker,
 			  opp,
 			  opp_ctrl_table[opp].ddr_khz, pwrctrl->curr_ddr_khz,
 			  pwrctrl->ddr_dfs ? "" : "[X]");
@@ -416,7 +438,7 @@ static unsigned int find_min_opp(enum dvfs_kicker kicker)
 	unsigned int min = UINT_MAX;
 	int i;
 
-	vcorefs_crit_mask("[%d, %d, %d, %d, %d, %d, %d, %d]\n",
+	vcorefs_crit_mask("[%d, %d, %d, %d, %d, %d, %d, %d, %d]\n",
 				kicker_ctrl_table[KIR_GPU].opp,
 				kicker_ctrl_table[KIR_MM].opp,
 				kicker_ctrl_table[KIR_EMIBW].opp,
@@ -424,6 +446,7 @@ static unsigned int find_min_opp(enum dvfs_kicker kicker)
 				kicker_ctrl_table[KIR_WIFI].opp,
 				kicker_ctrl_table[KIR_PERF].opp,
 				kicker_ctrl_table[KIR_BOOTUP].opp,
+				kicker_ctrl_table[KIR_AUTOK_EMMC].opp,
 				kicker_ctrl_table[KIR_SYSFS].opp);
 
 	/* find the min opp from kicker table */
@@ -463,7 +486,6 @@ static unsigned int find_opp_index_by_request(enum dvfs_kicker kicker, int new_o
 	}
 
 	kicker_ctrl_table[kicker].opp = new_opp;
-
 	return find_min_opp(kicker);
 }
 
@@ -612,13 +634,20 @@ static int vcorefs_func_enable_check(enum dvfs_kicker kicker, enum dvfs_opp new_
 	vcorefs_crit_mask("feature_en: %u(%d), kicker: %u, new_opp: %d(%d)\n",
 			  feature_en, pwrctrl->error_code, kicker, new_opp, kicker_ctrl_table[kicker].opp);
 
-	if (kicker < KIR_GPU || kicker >= NUM_KICKER || kicker == KIR_SDIO)
+	if (kicker < KIR_GPU
+		|| (kicker >= NUM_KICKER && kicker != KIR_AUTOK_EMMC)
+		|| kicker == KIR_SDIO)
 		return -ERR_KICKER;
 	if (new_opp < OPP_OFF || new_opp >= NUM_OPP)
 		return -ERR_OPP;
 
 	/* UHPM is only for GPU */
-	if (new_opp == OPPI_PERF_ULTRA && kicker != KIR_GPU && kicker != KIR_WIFI && kicker != KIR_SYSFS)
+	/* [New feature] Allow emmc_autoK for opp0 */
+	if (new_opp == OPPI_PERF_ULTRA
+			&& kicker != KIR_GPU
+			&& kicker != KIR_WIFI
+			&& kicker != KIR_SYSFS
+			&& kicker != KIR_AUTOK_EMMC)
 		return -ERR_OPP;
 
 	if (!pwrctrl->late_init_opp_done)
@@ -626,6 +655,119 @@ static int vcorefs_func_enable_check(enum dvfs_kicker kicker, enum dvfs_opp new_
 
 	return 0;
 }
+
+/**************************************
+ * EMMC Autok API
+ *
+ **************************************/
+/**************************************
+ * autok_lock
+ **************************************/
+static int vcorefs_autok_lock_dvfs(bool lock)
+{
+	struct vcorefs_profile *pwrctrl = &vcorefs_ctrl;
+
+	//mutex_lock(&vcorefs_mutex);
+	pwrctrl->autok_lock = lock;
+	//mutex_unlock(&vcorefs_mutex);
+
+	return 0;
+}
+
+static int vcorefs_autok_set_vcore(int kicker, enum dvfs_opp opp)
+{
+	int r = 0;
+	struct vcorefs_profile *pwrctrl = &vcorefs_ctrl;
+
+	if (opp >= NUM_OPP || !pwrctrl->autok_lock) {
+		pr_info("[AUTOK_EMMC] set vcore fail, opp: %d, autok_lock: %d\n",
+				opp, pwrctrl->autok_lock);
+		return -1;
+	}
+
+	vcorefs_crit_mask("[AUTOK_EMMC] kicker: %d, opp: %d, curr_opp: %d(%d)\n",
+		     kicker, opp,vcorefs_curr_opp,vcorefs_prev_opp);
+
+	/*
+	 * r = 0: DVFS completed
+	 *
+	 * LPM to HPM:
+	 *      r = -2: step1 DVS fail
+	 *      r = -3: step2 DFS fail
+	 */
+	r = kick_dvfs_by_opp_index(kicker, opp);
+
+	return r;
+}
+
+/******************************************
+ * vcore_autok_emmc
+ * 	to initiate emmc calibration after
+ * 	vcore driver init done and feature_en
+ ******************************************/
+void vcore_autok_emmc(void)
+{
+#if (AUTOK_EMMC == 1)
+	int r;
+
+	r = emmc_autok();
+	pr_info("EMMC autok done: %s\n", (r == 0) ? "Yes" : "No");
+#endif
+}
+
+/******************************************
+ * vcore_autok_check
+ *   autok check without lock
+ ******************************************/
+bool vcore_autok_check(int kicker)
+{
+	int is_autok = true;
+	struct vcorefs_profile *pwrctrl = &vcorefs_ctrl;
+
+	/* avoid taking lock as it is already taken in request API */
+	if (kicker != KIR_AUTOK_EMMC ) {
+		is_autok = false;
+	} else {
+		vcorefs_crit_mask(" allow kir: %d for autok \n", kicker);
+		is_autok = true;
+	}
+
+	return is_autok;
+}
+
+/*********************************************************
+ * vcore_autok_lock_check
+ *	autok check with lock
+ *	lock vcore for AutoK kicker for other than OPPI_UNREQ
+ ********************************************************/
+bool vcore_autok_lock_check(int kicker, int opp)
+{
+	bool lock_r = true;
+	struct vcorefs_profile *pwrctrl = &vcorefs_ctrl;
+
+	if (pwrctrl->active_autok_kr == 0) {
+		vcorefs_crit_mask("[AUTOK] kir: %d, opp: %d \n",
+							kicker,opp);
+		pwrctrl->active_autok_kr = kicker;	/* start autok */
+		lock_r = true;
+	} else if (kicker == pwrctrl->active_autok_kr) {
+		vcorefs_crit_mask(
+			"[AUTOK] kir: %d, opp: %d, active_kicker:%d\n",
+			kicker,opp, pwrctrl->active_autok_kr);
+		lock_r = true;	/* continue autok */
+	} else {
+		WARN_ON(1);
+	}
+
+	if (opp == OPPI_UNREQ) {
+		pwrctrl->active_autok_kr = 0;
+		lock_r = false;
+		vcorefs_crit_mask(" lock_r: false , opp:%d is OPP_UNREQ\n",
+						opp);
+	}
+	return lock_r;
+}
+/***** END EMMC AUTOK API ************/
 
 /******************************************
  * kicker Idx   Condition
@@ -639,8 +781,12 @@ static int vcorefs_func_enable_check(enum dvfs_kicker kicker, enum dvfs_opp new_
 int vcorefs_request_dvfs_opp(enum dvfs_kicker kicker, enum dvfs_opp new_opp)
 {
 	struct vcorefs_profile *pwrctrl = &vcorefs_ctrl;
+	struct kicker_profile *kicker_ctrl_table = kicker_table;
+
 	unsigned int request_opp;
 	int r;
+	int autok_r = 0;
+	int autok_lock = 0;
 
 	mutex_lock(&vcorefs_mutex);
 	r = vcorefs_func_enable_check(kicker, new_opp);
@@ -648,6 +794,32 @@ int vcorefs_request_dvfs_opp(enum dvfs_kicker kicker, enum dvfs_opp new_opp)
 		vcorefs_crit_mask("*** VCORE DVFS STOP (%d) ***\n", r);
 		mutex_unlock(&vcorefs_mutex);
 		return r;
+	}
+
+	autok_r = vcore_autok_check(kicker);
+	if (autok_r) {
+		autok_lock = vcore_autok_lock_check(kicker, new_opp);
+		vcorefs_crit_mask("[AUTOK] kr %d set %s\n",
+			kicker, autok_lock ? "lock" : "unlock");
+		if (autok_lock) {
+			vcorefs_autok_lock_dvfs(autok_lock);
+			kicker_ctrl_table[kicker].opp = new_opp;
+			pwrctrl->error_code = vcorefs_autok_set_vcore(kicker, new_opp);
+		} else {
+			request_opp = find_opp_index_by_request(kicker, new_opp);
+			pwrctrl->error_code = vcorefs_autok_set_vcore(kicker, request_opp);
+			vcorefs_autok_lock_dvfs(autok_lock);
+		}
+		mutex_unlock(&vcorefs_mutex);	/* unlock mutex before returning */
+		return 0;
+	}
+
+	if (pwrctrl->autok_lock) {
+		vcorefs_crit_mask(
+			"[AUTOK] autok locked: not allow kr %d, opp: %d\n",
+			kicker, new_opp);
+		mutex_unlock(&vcorefs_mutex);
+		return -1;
 	}
 
 	request_opp = find_opp_index_by_request(kicker, new_opp);
@@ -780,6 +952,14 @@ static int late_init_to_lowpwr_opp(void)
 	tag_pr_info("[%s] feature_en: %u, late_init_opp: %u\n", __func__, feature_en, pwrctrl->late_init_opp);
 	mutex_unlock(&vcorefs_mutex);
 
+	if(feature_en == 1 && pwrctrl->late_init_opp_done == 1 ) {
+		/* Setup the MD registers for design workaround */
+		spm_set_md_to_low_pwr(1);
+		/* Start autok emmc after late init done */
+		vcore_autok_emmc();
+		/* Reset MD registers to original */
+		spm_set_md_to_low_pwr(0);
+	}
 	return 0;
 }
 
@@ -872,6 +1052,8 @@ static ssize_t error_table_show(struct kobject *kobj, struct kobj_attribute *att
 	p += sprintf(p, "%u: ERR_DDR_DFS\n"        , ERR_DDR_DFS);
 	p += sprintf(p, "%u: ERR_VENCPLL_FH\n"     , ERR_VENCPLL_FH);
 	p += sprintf(p, "%u: ERR_LATE_INIT_OPP\n"  , ERR_LATE_INIT_OPP);
+	p += sprintf(p, "%u: ERR_AUTOK_EMMC\n"	   , ERR_AUTOK_EMMC);
+
 
 	BUG_ON(p - buf >= PAGE_SIZE);
 	return p - buf;
@@ -891,6 +1073,7 @@ static ssize_t vcore_debug_show(struct kobject *kobj, struct kobj_attribute *att
 	p += sprintf(p, "[freq_dfs  ]: %u\n"  , pwrctrl->freq_dfs);
 	p += sprintf(p, "[ddr_dfs   ]: %u\n"  , pwrctrl->ddr_dfs);
 	p += sprintf(p, "[sdio_lock ]: %u\n"  , pwrctrl->sdio_lock);
+	p += sprintf(p, "[autok_lock]: %d\n"  , pwrctrl->autok_lock);
 	p += sprintf(p, "[ERROR_CODE]: %d\n"  , pwrctrl->error_code);
 	p += sprintf(p, "[log_mask  ]: 0x%x\n", pwrctrl->log_mask);
 	p += sprintf(p, "\n");
@@ -921,6 +1104,7 @@ static ssize_t vcore_debug_show(struct kobject *kobj, struct kobj_attribute *att
 	p += sprintf(p, "[KIR_WIFI ] opp: %d\n", kicker_ctrl_table[KIR_WIFI].opp);
 	p += sprintf(p, "[KIR_PERF ] opp: %d\n", kicker_ctrl_table[KIR_PERF].opp);
 	p += sprintf(p, "[KIR_BOOTUP ] opp: %d\n", kicker_ctrl_table[KIR_BOOTUP].opp);
+	p += sprintf(p, "[KIR_AUTOK_EMMC] opp: %d\n", kicker_ctrl_table[KIR_AUTOK_EMMC].opp);
 	p += sprintf(p, "[KIR_SYSFS] opp: %d\n", kicker_ctrl_table[KIR_SYSFS].opp);
 	p += sprintf(p, "\n");
 
@@ -982,6 +1166,8 @@ static ssize_t vcore_debug_store(struct kobject *kobj, struct kobj_attribute *at
 		vcorefs_request_dvfs_opp(KIR_PERF, val);
 	} else if (!cmd_cmp(cmd, "KIR_BOOTUP")) {
 		vcorefs_request_dvfs_opp(KIR_BOOTUP, val);
+	} else if (!cmd_cmp(cmd, "KIR_AUTOK_EMMC")) {
+		vcorefs_request_dvfs_opp(KIR_AUTOK_EMMC, val);
 	} else if (!cmd_cmp(cmd, "KIR_SYSFS") && (val >= OPP_OFF && val < NUM_OPP)) {
 		if (is_vcorefs_can_work()) {
 			r = vcorefs_request_dvfs_opp(KIR_SYSFS, val);

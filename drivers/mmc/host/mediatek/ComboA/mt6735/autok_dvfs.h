@@ -16,8 +16,18 @@
 #include "msdc_cust.h"
 #include "autok.h"
 
+#define VCOREFS_READY
+
+#if defined(VCOREFS_READY)
+#include <linux/pm_qos.h>
+#include "mt_vcore_dvfs.h"
+#include <mach/mtk_pmic_wrap.h>
+#endif
+
 enum AUTOK_VCORE {
 	AUTOK_VCORE_LEVEL0 = 0,
+	AUTOK_VCORE_LEVEL1,
+	AUTOK_VCORE_LEVEL2,
 	AUTOK_VCORE_MERGE,
 	AUTOK_VCORE_NUM = AUTOK_VCORE_MERGE
 };

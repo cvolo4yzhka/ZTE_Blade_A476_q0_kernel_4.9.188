@@ -21,7 +21,7 @@
 #include "mtk_sd.h"
 #include "dbg.h"
 #include <mmc/core/sdio_ops.h>
-
+#include <linux/regulator/consumer.h>
 static char const * const sdio_autok_res_path[] = {
 	"/data/sdio_autok_0", "/data/sdio_autok_1",
 	"/data/sdio_autok_2", "/data/sdio_autok_3",
@@ -78,9 +78,14 @@ int emmc_execute_dvfs_autok(struct msdc_host *host, u32 opcode)
 	int ret = 0;
 	int vcore = 0;
 	u8 *res;
-
+#if defined(VCOREFS_READY)
+	if (host->use_hw_dvfs == 0) {
+		vcore = AUTOK_VCORE_MERGE;
+	} else {
+		pr_err("[AUTOK]Need change para when dvfs\n");
+	}
+#endif
 	res = host->autok_res[vcore];
-
 	if (host->mmc->ios.timing == MMC_TIMING_MMC_HS200) {
 
 		if (opcode == MMC_SEND_STATUS) {
@@ -122,6 +127,14 @@ void sdio_execute_dvfs_autok(struct msdc_host *host)
 {
 }
 
+#if defined(VCOREFS_READY)
+static int autok_opp[AUTOK_VCORE_NUM] = {
+	OPPI_PERF_ULTRA, /* 0.8V */  //is these vaule corrcet? 0.8V?
+	OPPI_PERF, /* 0.7V */
+	OPPI_LOW_PWR, /* 0.675V or 0.7V */
+};
+#endif
+
 /*
  * Vcore dvfs module MUST ensure having executed
  * the function before mmcblk0 inited + 3s,
@@ -130,7 +143,11 @@ void sdio_execute_dvfs_autok(struct msdc_host *host)
  */
 int emmc_autok(void)
 {
+#if !defined(FPGA_PLATFORM) && defined(VCOREFS_READY)
 	struct msdc_host *host = mtk_msdc_host[0];
+	void __iomem *base;
+	int merge_result, merge_mode, merge_window;
+	int i, vcore_step1 = -1, vcore_step2 = 0;
 
 	if (!host || !host->mmc) {
 		pr_notice("eMMC device not ready\n");
@@ -146,7 +163,69 @@ int emmc_autok(void)
 		pr_notice("eMMC 1st autok not done\n");
 		return -1;
 	}
+
 	pr_info("emmc autok\n");
+	base = host->base;
+	mmc_claim_host(host->mmc);
+
+	for (i = 0; i < AUTOK_VCORE_NUM; i++) {
+
+          pr_debug("[AUTOK] emmc_autok VCORE= %d \n", i);
+
+         if (vcorefs_request_dvfs_opp(KIR_AUTOK_EMMC, autok_opp[i]) != 0)
+			pr_err("vcorefs_request_dvfs_opp@L%d fail!\n", i);
+
+          vcore_step2 = vcore_pmic_to_uv(pmic_get_register_value(PMIC_VCORE1_VOSEL_ON));
+
+           pr_debug("[AUTOK] get regulator volt vcore_step1: %d vocre_step2: %d\n",
+                    vcore_step1, vcore_step2);
+		if (vcore_step2 == vcore_step1) {
+			pr_info("skip duplicated vcore autok\n");
+			memcpy(host->autok_res[i], host->autok_res[i-1],
+				TUNING_PARA_SCAN_COUNT);
+		} else {
+			emmc_execute_dvfs_autok(host,
+				MMC_SEND_TUNING_BLOCK_HS200);
+			if (host->use_hw_dvfs == 0)
+				memcpy(host->autok_res[i],
+					host->autok_res[AUTOK_VCORE_MERGE],
+					TUNING_PARA_SCAN_COUNT);
+		}
+		vcore_step1 = vcore_step2;
+	}
+
+	if (host->mmc->ios.timing == MMC_TIMING_MMC_HS400)
+		merge_mode = MERGE_HS400;
+	else
+		merge_mode = MERGE_HS200_SDR104;
+
+	merge_result = autok_vcore_merge_sel(host, merge_mode);
+	for (i = CMD_MAX_WIN; i <= H_CLK_TX_MAX_WIN; i++) {
+		merge_window = host->autok_res[AUTOK_VCORE_MERGE][i];
+		if (merge_window < AUTOK_MERGE_MIN_WIN)
+			merge_result = -1;
+		if (merge_window != 0xFF)
+			pr_info("[AUTOK]merge_value = %d\n", merge_window);
+	}
+
+	if (merge_result == 0) {
+		autok_tuning_parameter_init(host,
+			host->autok_res[AUTOK_VCORE_MERGE]);
+		pr_info("[AUTOK]No need change para when dvfs\n");
+	} else if (host->use_hw_dvfs == 1) {
+		pr_info("[AUTOK]Need change para when dvfs\n");
+	} else if (host->use_hw_dvfs == 0) {
+		autok_tuning_parameter_init(host,
+			host->autok_res[AUTOK_VCORE_LEVEL0]);
+		pr_info("[AUTOK]Need lock vcore\n");
+		host->lock_vcore = 1;
+	}
+
+if (vcorefs_request_dvfs_opp(KIR_AUTOK_EMMC, OPPI_UNREQ) != 0)
+	pr_notice("vcorefs_request_dvfs_opp@OPP_UNREQ fail!\n");
+
+	mmc_release_host(host->mmc);
+#endif
 
 	return 0;
 }
@@ -175,7 +254,6 @@ int sdio_autok(void)
 	return 0;
 }
 EXPORT_SYMBOL(sdio_autok);
-
 void msdc_dump_autok(char **buff, unsigned long *size,
 	struct seq_file *m, struct msdc_host *host)
 {
@@ -189,7 +267,7 @@ void msdc_dump_autok(char **buff, unsigned long *size,
 		host->autok_res[0][AUTOK_VER1],
 		host->autok_res[0][AUTOK_VER0]);
 
-	for (i = AUTOK_VCORE_LEVEL0; i >= AUTOK_VCORE_LEVEL0; i--) {
+	for (i = AUTOK_VCORE_NUM; i >= AUTOK_VCORE_LEVEL0; i--) {
 		start = CMD_SCAN_R0;
 		for (j = 0; j < 64; j++) {
 			bit_pos = j % 8;

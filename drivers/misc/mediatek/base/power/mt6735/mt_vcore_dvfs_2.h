@@ -57,14 +57,15 @@ enum dvfs_kicker {
 	KIR_EMIBW,		/* 2 */
 	KIR_SDIO,		/* 3 */
 	KIR_WIFI,		/* 4 */
-	KIR_PERF,
-	KIR_BOOTUP,
-	KIR_SYSFS,		/* 5 */
-	NUM_KICKER,		/* 6 */
+	KIR_PERF,		/* 5*/
+	KIR_BOOTUP,		/* 6 */
+	KIR_SYSFS,		/* 7 */
+	NUM_KICKER,		/* 8 */
 
 	/* internal kicker */
-	KIR_SDIO_AUTOK,		/* 7 */
-	KIR_LATE_INIT		/* 8 */
+	KIR_SDIO_AUTOK,		/* 9 */
+	KIR_LATE_INIT,		/* 10 */
+	KIR_AUTOK_EMMC		/* 11 */
 };
 
 enum dvfs_opp {
@@ -91,7 +92,8 @@ enum dvfs_error {
 	ERR_VCORE_DVS,		/* 7 */
 	ERR_DDR_DFS,		/* 8 */
 	ERR_VENCPLL_FH,		/* 9 */
-	ERR_LATE_INIT_OPP	/* 10 */
+	ERR_LATE_INIT_OPP,	/* 10 */
+	ERR_AUTOK_EMMC		/* 11 */
 };
 
 /* for GPU, MM, EMIBW, SDIO, USB, SYSFS */
@@ -103,6 +105,12 @@ extern unsigned int vcorefs_sdio_get_vcore_nml(void);
 extern int vcorefs_sdio_set_vcore_nml(unsigned int vcore_uv);
 extern int vcorefs_sdio_unlock_dvfs(bool is_online_tuning);
 extern bool vcorefs_sdio_need_multi_autok(void);
+
+/* for EMMC Autok */
+extern int emmc_autok(void);
+extern void vcore_autok_emmc(void);
+extern bool vcore_autok_check(int kicker);
+extern bool vcore_autok_lock_check(int kicker, int opp);
 
 /* for External Control Function */
 extern unsigned int vcorefs_get_curr_voltage(void);

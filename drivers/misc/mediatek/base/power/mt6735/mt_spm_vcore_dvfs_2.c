@@ -19,7 +19,7 @@
 #include "mt_vcore_dvfs.h"
 #include "mt_cpufreq.h"
 #include "mt_spm_internal.h"
-
+#include "mt_clkmgr.h"
 #define PER_OPP_DVS_US		600
 
 #define VCORE_STA_UHPM		(VCORE_STA_1 | VCORE_STA_0)
@@ -223,6 +223,46 @@ static bool is_fw_not_support_uhpm(void)
 	/*u32 sodi_ptr = base_va_to_pa(__spm_sodi.pcmdesc->base);*/
 
 	return pcm_ptr != vcore_ptr /*&& pcm_ptr != sodi_ptr*/;
+}
+/***************************************
+ *spm_set_md_to_low_pwr
+ *	To change MD flow for autoK tune
+ *	allow autoK to set opp2 for tuning
+ ***************************************/
+int spm_set_md_to_low_pwr(int flag)
+{
+	if(flag) {
+		/*Set all the values as per Piage suggestions*/
+		if(spm_read(SPM_MD_PWR_CON) &(0x1 << 3)) {
+			spm_write(SPM_MD_PWR_CON,spm_read(SPM_MD_PWR_CON) | 0x1 << 4);
+			spm_write(SPM_MD_PWR_CON,spm_read(SPM_MD_PWR_CON) & ~(0x1 << 0));
+		}
+		/* INFO="CLK_MODE[9]=1"*/
+		spm_write(CLK_MODE, spm_read(CLK_MODE) | (0x1 << 9));
+		spm_write(C2K_SPM_CTRL, spm_read(C2K_SPM_CTRL) & ~(0x1 << 2));
+
+		spm_crit("SPM_MD_PWR_CON : 0x%x\n", spm_read(SPM_MD_PWR_CON));
+		spm_crit("CLK_MODE : 0x%x\n", spm_read(CLK_MODE));
+		spm_crit("SPM_PCM_SRC_REQ : 0x%x\n", spm_read(SPM_PCM_SRC_REQ));
+		spm_crit("PCM_REG13_DATA: 0x%x\n", spm_read(SPM_PCM_REG13_DATA));
+
+	} else {
+		/* restore all above register values which are changes before*/
+		spm_write(C2K_SPM_CTRL, spm_read(C2K_SPM_CTRL) | (0x1 << 2));
+		/* INFO="CLK_MODE[9]=0"*/
+		spm_write(CLK_MODE, spm_read(CLK_MODE) & ~(0x1 << 9));
+		/* Need to change MD_PWR_CON only when MD_PWR_CON[3]= 1'b1 */
+		if(spm_read(SPM_MD_PWR_CON) &(0x1 << 3)) {
+			spm_write(SPM_MD_PWR_CON, spm_read(SPM_MD_PWR_CON) & ~(0x1 << 4));
+			spm_write(SPM_MD_PWR_CON, spm_read(SPM_MD_PWR_CON) | (0x1 << 0));
+		}
+		spm_crit("SPM_MD_PWR_CON : 0x%x\n", spm_read(SPM_MD_PWR_CON));
+		spm_crit("CLK_MODE : 0x%x\n", spm_read(CLK_MODE));
+		spm_crit("SPM_PCM_SRC_REQ : 0x%x\n", spm_read(SPM_PCM_SRC_REQ));
+		spm_crit("C2K_SPM_CTRL : 0x%x\n",spm_read(C2K_SPM_CTRL));
+		spm_crit("PCM_REG13_DATA: 0x%x\n", spm_read(SPM_PCM_REG13_DATA));
+	}
+	return 0;
 }
 
 int spm_set_vcore_dvs_voltage(unsigned int opp)
