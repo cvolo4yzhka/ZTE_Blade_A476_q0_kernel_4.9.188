@@ -1892,6 +1892,10 @@ static int mt_auxadc_probe(struct platform_device *dev)
 		pr_err(TAG "find node failed\n");
 	}
 
+if (used_channel_counter != 0) {
+ret = 0;
+	}
+
 #if !defined(CONFIG_MTK_CLKMGR)
 	clk_auxadc = devm_clk_get(&dev->dev, "auxadc-main");
 	if (IS_ERR(clk_auxadc)) {
