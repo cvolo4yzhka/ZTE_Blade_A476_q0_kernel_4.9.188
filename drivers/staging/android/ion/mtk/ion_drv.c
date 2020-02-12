@@ -130,7 +130,7 @@ static long ion_sys_cache_sync(struct ion_client *client,
 			       int from_kernel)
 {
 	enum ION_CACHE_SYNC_TYPE sync_type = param->sync_type;
-
+#ifdef CONFIG_MACH_MT6580
 	ION_FUNC_ENTER;
 	if (sync_type < ION_CACHE_CLEAN_ALL) {
 		/* By range operation */
@@ -266,6 +266,85 @@ static long ion_sys_cache_sync(struct ion_client *client,
 	}
 	ION_FUNC_LEAVE;
 	return 0;
+#else
+	size_t sync_size = 0;
+	unsigned long sync_va = 0;
+	struct ion_handle *kernel_handle;
+	struct ion_buffer *buffer;
+	int ret = 0;
+	int ion_need_unmap_flag = 0;
+	/* Get kernel handle
+	 * For cache sync all cases, some users
+	 *     don't send valid hanlde, return error here.
+	 */
+	kernel_handle = ion_drv_get_handle(client, param->handle,
+					   param->kernel_handle,
+					   from_kernel);
+	if (IS_ERR(kernel_handle)) {
+		IONMSG("%s hdl inv[kernel %d][hdl %d-%p] clt[%s]\n",
+		       __func__, from_kernel,
+		       param->handle, param->kernel_handle,
+		       (*client->dbg_name) ?
+		       client->dbg_name : client->name);
+		return -EINVAL;
+	}
+
+	buffer = kernel_handle->buffer;
+	sync_va = (unsigned long)param->va;
+	sync_size = param->size;
+
+	if (sync_type < ION_CACHE_CLEAN_ALL) {
+
+			/* whole buffer cache sync
+			 * get sync_va and sync_size here
+			 */
+			sync_size = (unsigned int)buffer->size;
+
+				sync_va = (unsigned long)
+					  ion_map_kernel(client, kernel_handle);
+				ion_need_unmap_flag = 1;
+	}
+	else {
+		IONMSG("[ion_sys_cache_sync] Error\n");
+		ret = -EINVAL;
+		goto err;
+        }
+
+	ret = ion_cache_sync_kernel(sync_va, sync_size, sync_type);
+	if (ret < 0)
+		goto err;
+	if (ion_need_unmap_flag) {
+		ion_unmap_kernel(client, kernel_handle);
+		ion_need_unmap_flag = 0;
+        }
+
+
+	ion_drv_put_kernel_handle(kernel_handle);
+		if (sync_type == ION_CACHE_CLEAN_BY_RANGE)
+			mmprofile_log_ex(ion_mmp_events
+					 [PROFILE_DMA_CLEAN_RANGE],
+					 MMPROFILE_FLAG_END, sync_size, 0);
+		else if (sync_type == ION_CACHE_INVALID_BY_RANGE)
+			mmprofile_log_ex(ion_mmp_events
+					 [PROFILE_DMA_INVALID_RANGE],
+					 MMPROFILE_FLAG_END, sync_size, 0);
+		else if (sync_type == ION_CACHE_FLUSH_BY_RANGE)
+			mmprofile_log_ex(ion_mmp_events
+					 [PROFILE_DMA_FLUSH_RANGE],
+					 MMPROFILE_FLAG_END, sync_size, 0);
+
+	return ret;
+
+err:
+
+	IONMSG("%s ion_sys_cache_sync sync[%d] err[k%d][hdl %d-%p][addr %p][sz:%d] clt[%s]\n",
+	       __func__, sync_type, from_kernel,
+	       param->handle, param->kernel_handle, param->va,
+	       param->size, (*client->dbg_name) ?
+	       client->dbg_name : client->name);
+	ion_drv_put_kernel_handle(kernel_handle);
+	return ret;
+#endif
 }
 
 int ion_sys_copy_client_name(const char *src, char *dst)
