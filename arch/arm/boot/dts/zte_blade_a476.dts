@@ -11,6 +11,48 @@
 #include "mt6735m.dts"
 #endif
 
+&cpus {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	/*enable-method = "mediatek,mt6735-smp"; */
+
+	cpu0: cpu@000 {
+		device_type = "cpu";
+		compatible = "arm,cortex-a53";
+		reg = <0x000>;
+		enable-method = "spin-table";
+		cpu-release-addr = <0x0 0x40000200>;
+		clock-frequency = <1000000000>;
+	};
+
+	cpu1: cpu@001 {
+		device_type = "cpu";
+		compatible = "arm,cortex-a53";
+		reg = <0x001>;
+		enable-method = "spin-table";
+		cpu-release-addr = <0x0 0x40000200>;
+		clock-frequency = <1000000000>;
+	};
+
+	cpu2: cpu@002 {
+		device_type = "cpu";
+		compatible = "arm,cortex-a53";
+		reg = <0x002>;
+		enable-method = "spin-table";
+		cpu-release-addr = <0x0 0x40000200>;
+		clock-frequency = <1000000000>;
+	};
+
+	cpu3: cpu@003 {
+		device_type = "cpu";
+		compatible = "arm,cortex-a53";
+		reg = <0x003>;
+		enable-method = "spin-table";
+		cpu-release-addr = <0x0 0x40000200>;
+		clock-frequency = <1000000000>;
+	};
+};
+
 &bus {
 	MALI@0x13040000 {
 		compatible = "arm,malit720", "arm,mali-t72x", "arm,malit7xx", "arm,mali-midgard";
