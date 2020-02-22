@@ -1543,10 +1543,10 @@ static int TMD2771_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	INIT_WORK(&obj->irq_work, TMD2771_irq_work);
 	obj->client = client;
 	i2c_set_clientdata(client, obj);
-	atomic_set(&obj->als_debounce, 50);
+	atomic_set(&obj->als_debounce, 50);// stock - 300
 	atomic_set(&obj->als_deb_on, 0);
 	atomic_set(&obj->als_deb_end, 0);
-	atomic_set(&obj->ps_debounce, 10);
+	atomic_set(&obj->ps_debounce, 200);// stock - 200
 	atomic_set(&obj->ps_deb_on, 0);
 	atomic_set(&obj->ps_deb_end, 0);
 	atomic_set(&obj->ps_mask, 0);

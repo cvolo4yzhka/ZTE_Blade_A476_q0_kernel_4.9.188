@@ -38,7 +38,9 @@
 #define TUNE_TX_CNT                  (10)
 #define CHECK_QSR                    (0x800D)
 #define TUNE_DATA_TX_ADDR            (0x358000)
+#if defined(CONFIG_MTK_EMMC_CQ_SUPPORT) || defined(CONFIG_MTK_EMMC_HW_CQ)
 #define CMDQ
+#endif
 #define AUTOK_CMD_TIMES              (20)
 /* scan result may find xxxxooxxx */
 #define AUTOK_TUNING_INACCURACY      (10)

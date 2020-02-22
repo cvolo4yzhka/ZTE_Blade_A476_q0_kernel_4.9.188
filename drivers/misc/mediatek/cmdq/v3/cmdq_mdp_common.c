@@ -994,6 +994,9 @@ s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
 			}
 		}
 
+		if (!cmdq_core_check_pkt_valid(handle->pkt))
+			return -EFAULT;
+
 		err = cmdq_task_append_backup_reg(handle,
 			desc->regRequest.count,
 			(u32 *)(unsigned long)desc->regRequest.regAddresses);
@@ -1020,6 +1023,12 @@ s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
 			cmdq_task_destroy(handle);
 			CMDQ_SYSTRACE_END();
 			return err;
+		}
+
+		if (!cmdq_core_check_pkt_valid(handle->pkt)) {
+			cmdq_task_destroy(handle);
+			CMDQ_SYSTRACE_END();
+			return -EFAULT;
 		}
 	}
 
