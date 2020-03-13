@@ -226,12 +226,12 @@ static unsigned int charging_hw_init(void *data)
         bq24158_reg_config_interface(0x02,0x8e); // Battery regulator voltage 4.2V
 #endif
 
-//    bq24158_reg_config_interface(0x00,0x80);	//kick chip watch dog, disable STAT pin funtion (sanford.lin)
+    bq24158_reg_config_interface(0x00,0x80);	//kick chip watch dog, disable STAT pin funtion (sanford.lin)
     bq24158_reg_config_interface(0x01,0xb8);	//TE=1, CE=0, HZ_MODE=0, OPA_MODE=0
     bq24158_reg_config_interface(0x05,0x03);	//Special Changer voltage - 4.44V
 
   if ( !charging_init_flag ) {
-    bq24158_reg_config_interface(0x04,0x1a); //100mA
+    bq24158_reg_config_interface(0x04,0x1a); //146mA
     charging_init_flag = KAL_TRUE;
   }
 

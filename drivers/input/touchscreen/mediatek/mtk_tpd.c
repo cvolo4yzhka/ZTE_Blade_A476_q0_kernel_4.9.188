@@ -90,7 +90,7 @@ void tpd_get_dts_info(void)
 				key_dim_local, ARRAY_SIZE(key_dim_local))) {
  /* of_property_read_u32_array return 0, if all ok
  * then key_dim NOT copy from key_dim_local to tdp_dts_data with memcpy
- * move memcpy oou of if {} to line 116
+ * move memcpy out of if {} to line 116
  */
 //				memcpy(tpd_dts_data.tpd_key_dim_local,
 //					key_dim_local, sizeof(key_dim_local));
