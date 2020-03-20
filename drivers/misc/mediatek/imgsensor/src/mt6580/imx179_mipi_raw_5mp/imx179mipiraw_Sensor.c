@@ -55,7 +55,7 @@
 #define LOG_1 LOG_INF("IMX179,MIPI 4LANE\n")
 #define LOG_2 LOG_INF("preview 1640*1232@30fps,256Mbps/lane; video 3280*2464@30fps,256Mbps/lane; capture 8M@30fps,256MbpsMbps/lane\n")
 /****************************   Modify end    *******************************************/
-#define LOG_INF(format, args...)	pr_debug(PFX "[%s] " format, __FUNCTION__, ##args)
+#define LOG_INF(format, args...)	pr_err(PFX "[%s] " format, __FUNCTION__, ##args)
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
 //static kal_uint8  test_pattern_flag=0;
@@ -209,7 +209,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.max_frame_length = 0x7fff,
 	.ae_shut_delay_frame = 0,
 	.ae_sensor_gain_delay_frame = 0,
-	.ae_ispGain_delay_frame = 2,
+	.ae_ispGain_delay_frame = 3,
 	.ihdr_support = 0,	  //1, support; 0,not support
 	.ihdr_le_firstline = 0,  //1,le first ; 0, se first
 	.sensor_mode_num = 5,	  //support sensor mode num
@@ -240,8 +240,8 @@ static struct imgsensor_info_struct imgsensor_info = {
 static struct imgsensor_struct imgsensor = {
 	.mirror = IMAGE_NORMAL,				//mirrorflip information
 	.sensor_mode = IMGSENSOR_MODE_INIT, //IMGSENSOR_MODE enum value,record current sensor mode,such as: INIT, Preview, Capture, Video,High Speed Video, Slim Video
-	.shutter = 0x09AD,					//current shutter
-	.gain = 222,						//current gain
+	.shutter = 2300,					//current shutter
+	.gain = 139,						//current gain
 	.dummy_pixel = 0,					//current dummypixel
 	.dummy_line = 0,					//current dummyline
 	.current_fps = 0,  //full size current fps : 24fps for PIP, 30fps for Normal or ZSD
@@ -590,6 +590,7 @@ static kal_uint16 gain2reg(const kal_uint16 gain)
 static kal_uint16 set_gain(kal_uint16 gain)
 {
 	kal_uint16 reg_gain;
+	kal_uint8 iTemp1;
 
 	/* 0x350A[0:1], 0x350B[0:7] AGC real gain */
 	/* [0:3] = N meams N /16 X	*/
@@ -612,6 +613,11 @@ static kal_uint16 set_gain(kal_uint16 gain)
 	write_cmos_sensor(0x0204, (reg_gain>>8)& 0xFF);
 	write_cmos_sensor(0x0205, reg_gain & 0xFF);
 	write_cmos_sensor_8(0x0104, 0x00);
+	iTemp1 = read_cmos_sensor(0x0204);
+	LOG_INF("i2c read setting high 204 = %d \n",iTemp1);
+	iTemp1 = read_cmos_sensor(0x0205);
+	LOG_INF("i2c read setting low 204 = %d \n",iTemp1);
+
 	return gain;
 }	/*	set_gain  */
 #if 0
@@ -778,7 +784,7 @@ static void sensor_init(void)
 	write_cmos_sensor(0x4109, 0x7C);
 	write_cmos_sensor(0x3302, 0x01);
 	write_cmos_sensor(0x0104, 0x00);//group
-	write_cmos_sensor(0x0100, 0x01);//STREAM ON
+//	write_cmos_sensor(0x0100, 0x01);//STREAM ON
 }	/*	sensor_init  */
 
 
@@ -793,6 +799,16 @@ static void preview_setting(void)
 	//write_cmos_sensor(0x0103, 0x01);//SW reset
 	write_cmos_sensor(0x0202, 0x09); //0x0202, 0x09
 	write_cmos_sensor(0x0203, 0xAD);//(0x0203, 0xcc)
+	imgsensor.shutter=2232;
+	imgsensor.gain=79;
+
+	write_cmos_sensor(0x0202, (imgsensor.shutter >> 8) & 0xff);
+	write_cmos_sensor(0x0203, imgsensor.shutter & 0xff);
+	write_cmos_sensor(0x0204, (imgsensor.gain >> 8) & 0xff);
+	write_cmos_sensor(0x0205, imgsensor.gain & 0xff);
+
+	//LOG_INF("imgsensor.shutter = %d\n", imgsensor.shutter);
+	//LOG_INF("imgsensor.gain = %d\n", imgsensor.gain);
 	//PLL setting
 	write_cmos_sensor(0x0301, 0x05);
 	write_cmos_sensor(0x0303, 0x01);
@@ -803,8 +819,8 @@ static void preview_setting(void)
 	write_cmos_sensor(0x030D, 0xA0); //(0x030D, 0xA2)
 	write_cmos_sensor(0x030E, 0x01);
 
-	write_cmos_sensor(0x0340, 0x09);//(0x0340, 0x09)
-	write_cmos_sensor(0x0341, 0xB1);
+	write_cmos_sensor(0x0340, ((imgsensor.shutter + 8) >> 8) & 0xff);//(0x0340, 0x09)
+	write_cmos_sensor(0x0341, (imgsensor.shutter + 8) & 0xff);
 	write_cmos_sensor(0x0342, 0x0D);
 	write_cmos_sensor(0x0343, 0x70);//(0x0343, 0x0D)
 	write_cmos_sensor(0x0344, 0x00);
@@ -853,7 +869,10 @@ static void preview_setting(void)
 	write_cmos_sensor(0x4108, 0x01);
 	write_cmos_sensor(0x4109, 0x7C);
 	write_cmos_sensor(0x0104, 0x00);//group
+	mdelay(35);
+
 	write_cmos_sensor(0x0100, 0x01);//STREAM ON
+	mdelay(35);
 // The register only need to enable 1 time.
 }	/*	preview_setting  */
 
@@ -1010,13 +1029,16 @@ static void capture_setting(kal_uint16 currefps)
 	{   //30fps
 		//30fps for Normal capture & ZSD
 		//5.1.2 FQPreview 3280x2464 30fps 24M MCLK 4lane 256Mbps/lane
-	    write_cmos_sensor(0x41C0, 0x01);
+		write_cmos_sensor(0x41C0, 0x01);
 		write_cmos_sensor(0x0104, 0x01);//group
 		write_cmos_sensor(0x0100, 0x00);//STREAM OFF
 		//write_cmos_sensor(0x0101, 0x00);
 		//write_cmos_sensor(0x0103, 0x01);//SW reset
-		write_cmos_sensor(0x0202, 0x09); //0x0202, 0x09
-		write_cmos_sensor(0x0203, 0xAD);//(0x0203, 0xcc)
+		write_cmos_sensor(0x0202, 0x08); //0x0202, 0x09
+		write_cmos_sensor(0x0203, 0xFC);//(0x0203, 0xcc)
+
+		write_cmos_sensor(0x0204, 0x00);
+		write_cmos_sensor(0x0205, 0x8B);
 		//PLL setting
 		write_cmos_sensor(0x0301, 0x05);
 		write_cmos_sensor(0x0303, 0x01);
@@ -1080,6 +1102,8 @@ static void capture_setting(kal_uint16 currefps)
 		write_cmos_sensor(0x0104, 0x00);//group
 		write_cmos_sensor(0x0100, 0x01);//STREAM ON
 	}
+
+  	mdelay(66);
 }
 
 static void normal_video_setting(kal_uint16 currefps)

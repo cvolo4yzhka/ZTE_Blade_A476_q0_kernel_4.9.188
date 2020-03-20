@@ -353,8 +353,8 @@ static ssize_t ged_vsync_offset_enable_write_entry(const char __user *pszBuffer,
 	/*
 	 *  This proc node accept only: [CMD] [NUM]
 	 *  for ex: "touch 1"
-	 *  
-	 */    
+	 *
+	 */
 
 	char acBuffer[GED_HAL_DEBUGFS_SIZE];
 	int aint32Indx[NUM_TOKEN];
@@ -362,12 +362,15 @@ static ssize_t ged_vsync_offset_enable_write_entry(const char __user *pszBuffer,
 	char *pcValue;
 	int value;
 	int i;
+	value = 0;
 
 	if (uiCount >= GED_HAL_DEBUGFS_SIZE)
 		goto normal_exit;
 
 	if (ged_copy_from_user(acBuffer, pszBuffer, uiCount))
 		goto normal_exit;
+
+	memset(aint32Indx, 0, sizeof(aint32Indx));
 
 	acBuffer[uiCount] = '\0';
 	i = tokenizer(acBuffer, uiCount, aint32Indx, NUM_TOKEN);
@@ -493,8 +496,8 @@ static ssize_t ged_vsync_offset_level_write_entry(
 	/*
 	 *  This proc node accept only: [CMD] [NUM]
 	 *  for ex: "touch 1"
-	 *  
-	 */    
+	 *
+	 */
 
 	char acBuffer[GED_HAL_DEBUGFS_SIZE];
 	int aint32Indx[NUM_TOKEN];
@@ -509,6 +512,8 @@ static ssize_t ged_vsync_offset_level_write_entry(
 
 	if (ged_copy_from_user(acBuffer, pszBuffer, uiCount))
 		return 0;
+
+	memset(aint32Indx, 0, sizeof(aint32Indx));
 
 	acBuffer[uiCount] = '\n';
 	acBuffer[uiCount+1] = 0;
