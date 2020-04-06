@@ -174,6 +174,7 @@ static long ion_sys_cache_sync(struct ion_client *client,
 				IONMSG("error: vm_struct is NULL!\n");
 				mutex_unlock(&ion_cache_sync_lock);
 				mutex_unlock(&client->lock);
+                          	ion_drv_put_kernel_handle(kernel_handle);
 				return -ENOMEM;
 			}
 
@@ -201,6 +202,7 @@ static long ion_sys_cache_sync(struct ion_client *client,
 						mutex_unlock
 						    (&ion_cache_sync_lock);
 						mutex_unlock(&client->lock);
+                                          	ion_drv_put_kernel_handle(kernel_handle);
 						return -EFAULT;
 					}
 
