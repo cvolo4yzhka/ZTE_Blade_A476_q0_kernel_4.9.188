@@ -166,6 +166,8 @@ unsigned long round_corner_mask_mva;
 static unsigned long long mutex_time_start;
 static int g_is_inited;
 
+extern int register_mmclk_switch_cb(clk_switch_cb notify_cb, clk_switch_cb notify_cb_nolock);
+
 void enqueue_buffer(struct display_primary_path_context *ctx, struct list_head *head,
 		    struct disp_internal_buffer_info *buf)
 {
@@ -5466,7 +5468,7 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps, int is_lcm_inited
 
 	if ((mmdvfs_get_mmdvfs_profile() == MMDVFS_PROFILE_D2_P_PLUS) ||
 	    (mmdvfs_get_mmdvfs_profile() == MMDVFS_PROFILE_D2_M_PLUS))
-		/* register_mmclk_switch_cb(primary_display_switch_mmsys_clk, _switch_mmsys_clk); */
+		register_mmclk_switch_cb(primary_display_switch_mmsys_clk, _switch_mmsys_clk);
 done:
 
 	/* disable OVL TF in video mode, cause cmdq/sodi log is not ready, avoid too much TF issue */
