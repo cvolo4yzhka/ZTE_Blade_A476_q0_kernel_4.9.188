@@ -912,12 +912,6 @@ void cmdq_mdp_add_consume_item(void)
 	}
 }
 
-static s32 cmdq_mdp_copy_cmd_to_task(struct cmdqRecStruct *handle,
-	void *src, u32 size, bool user_space)
-{
-	return cmdq_pkt_copy_cmd(handle, src, size, user_space);
-}
-
 static void cmdq_mdp_store_debug(struct cmdqCommandStruct *desc,
 	struct cmdqRecStruct *handle)
 {
@@ -950,6 +944,7 @@ s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
 {
 	struct cmdqRecStruct *handle;
 	struct task_private *private;
+	u32 copy_size;
 	s32 err;
 
 	CMDQ_SYSTRACE_BEGIN("%s\n", __func__);
@@ -969,34 +964,34 @@ s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
 	if (desc->prop_size && desc->prop_addr &&
 		desc->prop_size < CMDQ_MAX_USER_PROP_SIZE) {
 		handle->prop_addr = kzalloc(desc->prop_size, GFP_KERNEL);
-		memcpy(handle->prop_addr, (void *)CMDQ_U32_PTR(desc->prop_addr),
-			desc->prop_size);
+
 		handle->prop_size = desc->prop_size;
+		if (handle->prop_addr) {
+			memcpy(handle->prop_addr,
+				(void *)CMDQ_U32_PTR(desc->prop_addr),
+				desc->prop_size);
+		} else {
+			handle->prop_addr = NULL;
+			handle->prop_size = 0;
+		}
 	} else {
 		handle->prop_addr = NULL;
 		handle->prop_size = 0;
 	}
 
+	copy_size = desc->blockSize - 2 * CMDQ_INST_SIZE;
+	CMDQ_SYSTRACE_BEGIN("%s check copy %u\n", __func__, copy_size);
+	if (user_space && !cmdq_core_check_user_valid(
+		(void *)(unsigned long)desc->pVABase, copy_size, handle)) {
+		cmdq_task_destroy(handle);
+		CMDQ_SYSTRACE_END();
+		return -EFAULT;
+	}
+	CMDQ_SYSTRACE_END();
+
 	if (desc->regRequest.count &&
 		desc->regRequest.count <= CMDQ_MAX_DUMP_REG_COUNT &&
 		desc->regRequest.regAddresses) {
-		u32 copy_size = desc->blockSize - 2 * CMDQ_INST_SIZE;
-
-		/* no need append other instruction, copy all */
-		if (copy_size > 0) {
-			err = cmdq_mdp_copy_cmd_to_task(handle,
-				(void *)(unsigned long)desc->pVABase,
-				copy_size, user_space);
-			if (err < 0) {
-				cmdq_task_destroy(handle);
-				CMDQ_SYSTRACE_END();
-				return err;
-			}
-		}
-
-		if (!cmdq_core_check_pkt_valid(handle->pkt))
-			return -EFAULT;
-
 		err = cmdq_task_append_backup_reg(handle,
 			desc->regRequest.count,
 			(u32 *)(unsigned long)desc->regRequest.regAddresses);
@@ -1005,34 +1000,10 @@ s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
 			CMDQ_SYSTRACE_END();
 			return err;
 		}
-
-		err = cmdq_mdp_copy_cmd_to_task(handle,
-			(void *)(unsigned long)desc->pVABase + copy_size,
-			2 * CMDQ_INST_SIZE, user_space);
-		if (err < 0) {
-			cmdq_task_destroy(handle);
-			CMDQ_SYSTRACE_END();
-			return err;
-		}
-	} else {
-		/* no need append other instruction, copy all */
-		err = cmdq_mdp_copy_cmd_to_task(handle,
-			(void *)(unsigned long)desc->pVABase,
-			desc->blockSize, user_space);
-		if (err < 0) {
-			cmdq_task_destroy(handle);
-			CMDQ_SYSTRACE_END();
-			return err;
-		}
-
-		if (!cmdq_core_check_pkt_valid(handle->pkt)) {
-			cmdq_task_destroy(handle);
-			CMDQ_SYSTRACE_END();
-			return -EFAULT;
-		}
 	}
 
 	/* mark finalized since we copy it */
+	cmdq_pkt_finalize(handle->pkt);
 	handle->finalized = true;
 
 	/* assign handle for mdp */
