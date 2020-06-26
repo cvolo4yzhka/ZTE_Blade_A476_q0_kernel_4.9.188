@@ -1092,7 +1092,8 @@ int mtk_idle_select(int cpu)
 
 	/* teei ready */
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
-#ifdef CONFIG_MICROTRUST_TEE_SUPPORT
+#if (defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT))
 	if (!is_teei_ready()) {
 		reason = BY_TEE;
 		goto get_idle_idx;

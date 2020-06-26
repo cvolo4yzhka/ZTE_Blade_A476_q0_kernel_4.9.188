@@ -297,7 +297,6 @@ s32 cmdq_op_write_from_data_register(struct cmdqRecStruct *handle,
 s32 cmdqRecWriteFromDataRegister(struct cmdqRecStruct *handle,
 	enum cmdq_gpr_reg src_data_reg, u32 hw_addr);
 
-
 /* Allocate 32-bit register backup slot
  */
 s32 cmdq_alloc_mem(cmdqBackupSlotHandle *p_h_backup_slot, u32 slotCount);

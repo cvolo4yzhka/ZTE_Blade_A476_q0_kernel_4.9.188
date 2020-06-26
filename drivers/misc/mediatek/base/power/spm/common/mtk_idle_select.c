@@ -17,7 +17,8 @@
 
 #include <mt-plat/mtk_meminfo.h> /* dcs_get_dcs_status_trylock/unlock */
 
-#if defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+#if (defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT))
 #include <teei_client_main.h> /* is_teei_ready */
 #endif
 
@@ -209,6 +210,14 @@ int mtk_idle_select(int cpu)
 	/* 4. tee is ready ? */
 	#if !defined(CONFIG_FPGA_EARLY_PORTING) && \
 		defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+	if (!is_teei_ready()) {
+		reason = BY_TEE;
+		goto get_idle_idx;
+	}
+	#endif
+	/* 4. tee is ready ? */
+	#if !defined(CONFIG_FPGA_EARLY_PORTING) && \
+		defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
 	if (!is_teei_ready()) {
 		reason = BY_TEE;
 		goto get_idle_idx;

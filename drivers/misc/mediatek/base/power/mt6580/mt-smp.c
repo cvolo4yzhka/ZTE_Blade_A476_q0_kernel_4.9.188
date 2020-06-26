@@ -22,6 +22,13 @@
 #if defined(CONFIG_TRUSTY)
 #include <mach/mt_trusty_api.h>
 #endif
+#if defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+#include <teei_secure_api.h>
+#endif
+
+#if defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
+#include <teei_secure_api.h>
+#endif
 
 #include "mt-smp.h"
 #include "smp.h"
@@ -103,6 +110,13 @@ int __cpuinit mt_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 #elif defined(CONFIG_TRUSTY)
 	if (cpu >= 1 && cpu <= 3)
 		mt_trusty_call(SMC_FC_CPU_ON, virt_to_phys(mt_secondary_startup), cpu, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+	if (cpu >= 1 && cpu <= 3)
+		teei_secure_call(TEEI_FC_CPU_ON, virt_to_phys(mt_secondary_startup), cpu, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
+	if (cpu >= 1 && cpu <= 3)
+		teei_secure_call(TEEI_FC_CPU_ON,
+		virt_to_phys(mt_secondary_startup), cpu, 0);
 #else
 	writel_relaxed(virt_to_phys(mt_secondary_startup), infracfg_ao_base + 0x800);
 #endif

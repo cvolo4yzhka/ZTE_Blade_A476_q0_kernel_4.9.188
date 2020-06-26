@@ -380,7 +380,9 @@ static void __arch_timer_setup(unsigned type,
 		case PHYS_NONSECURE_PPI:
 		case HYP_PPI:
 /* When TEE is enabled, change to use non-secure local timer */
-#if defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || defined(CONFIG_TRUSTY)
+#if defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || defined(CONFIG_TRUSTY) || \
+			defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+			defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
 			clk->irq = arch_timer_ppi[PHYS_NONSECURE_PPI];	/* GIC_PPI_NS_PRIVATE_TIMER; */
 #else
 			clk->irq = arch_timer_ppi[PHYS_SECURE_PPI];	/* GIC_PPI_PRIVATE_TIMER; */
@@ -693,7 +695,9 @@ static int __init arch_timer_register(void)
 	case PHYS_SECURE_PPI:
 	case PHYS_NONSECURE_PPI:
 /* When TEE is enabled, change to use non-secure local timer */
-#if defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || defined(CONFIG_TRUSTY)
+#if defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || defined(CONFIG_TRUSTY) || \
+		defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+		defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
 		ppi = arch_timer_ppi[PHYS_NONSECURE_PPI];	/* GIC_PPI_NS_PRIVATE_TIMER; */
 #else
 		ppi = arch_timer_ppi[PHYS_SECURE_PPI];	/* GIC_PPI_PRIVATE_TIMER; */

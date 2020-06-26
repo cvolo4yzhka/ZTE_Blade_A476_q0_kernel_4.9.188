@@ -34,6 +34,7 @@
 #include <mmdvfs_pmqos.h>
 
 #include "cmdq_helper_ext.h"
+#include "mdp_def_ex.h"
 
 #include <linux/kernel.h>
 #include <linux/uaccess.h>

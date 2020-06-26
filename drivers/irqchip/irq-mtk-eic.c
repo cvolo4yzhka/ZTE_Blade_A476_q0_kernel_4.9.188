@@ -35,6 +35,7 @@
 #include <mt-plat/mtk_io.h>
 #include <mt-plat/mt_gpio.h>
 #include <linux/printk.h>
+#include <linux/pm_wakeup.h>
 #define EINT_DEBUG 0
 #if (EINT_DEBUG == 1)
 #define dbgmsg printk
@@ -43,7 +44,7 @@
 #endif
 
 static unsigned int EINT_IRQ_BASE;
-
+static struct wakeup_source *eint_wakelock;
 
 #ifdef CONFIG_MTK_LEGACY
 #if 0	/* disable MD_EINT temporarily, since modem module is not ready yet */
@@ -1045,6 +1046,7 @@ static void mt_eint_timer_event_handler(unsigned long eint_num)
 		generic_handle_irq(EINT_IRQ(eint_num));
 
 	local_irq_restore(flags);
+	__pm_relax(eint_wakelock);
 }
 
 /*
@@ -1382,6 +1384,7 @@ static irqreturn_t mt_eint_demux(struct irq_desc *desc)
 			if ((EINT_FUNC.is_deb_en[index] == 1)
 					&& (index >= MAX_HW_DEBOUNCE_CNT)) {
 				/* if its debounce is enable and it is a sw debounce */
+				__pm_stay_awake(eint_wakelock);
 				mt_eint_mask(index);
 				dbgmsg("got sw index %d\n", index);
 				mt_eint_set_timer_event(index);
@@ -2316,6 +2319,8 @@ static int __init mt_eint_init(void)
 	}
 	eint_trigger_history_init();
 #endif
+
+	eint_wakelock = wakeup_source_register("mtk_eint_wakelock");
 
 	return 0;
 }

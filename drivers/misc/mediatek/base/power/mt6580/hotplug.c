@@ -18,6 +18,14 @@
 #include <mach/mt_trusty_api.h>
 #endif
 
+#if defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+#include <teei_secure_api.h>
+#endif
+
+#if defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
+#include <teei_secure_api.h>
+#endif
+
 #include "mt-smp.h"
 #include "smp.h"
 #include "hotplug.h"
@@ -28,6 +36,10 @@ static inline void cpu_enter_lowpower(unsigned int cpu)
 {
 #if defined(CONFIG_TRUSTY)
 	mt_trusty_call(SMC_FC_CPU_OFF, 0, cpu, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+	teei_secure_call(TEEI_FC_CPU_OFF, 0, cpu, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
+	teei_secure_call(TEEI_FC_CPU_OFF, 0, cpu, 0);
 #endif
 
 	if (((cpu == 4) && (cpu_online(5) == 0) && (cpu_online(6) == 0)

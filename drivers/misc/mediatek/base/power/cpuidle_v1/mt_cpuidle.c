@@ -38,6 +38,15 @@
 #if defined(CONFIG_MTK_RAM_CONSOLE) || defined(CONFIG_TRUSTONIC_TEE_SUPPORT)
 #include <mach/mt_secure_api.h>
 #endif
+
+#if defined(CONFIG_MICROTRUST_TEE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+#include <teei_secure_api.h>
+#endif
+
+#if defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+#include <teei_secure_api.h>
+#endif
+
 #if defined(CONFIG_TRUSTY) && (defined(CONFIG_MACH_MT6580) || defined(CONFIG_ARCH_MT6570))
 #include <mach/mt_trusty_api.h>
 #endif
@@ -749,7 +758,9 @@ void mt_platform_save_context(int flags)
 void mt_platform_restore_context(int flags)
 {
 #if (defined(CONFIG_MACH_MT6580) || defined(CONFIG_ARCH_MT6570))
-#if (defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || defined(CONFIG_TRUSTY))
+#if (defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || defined(CONFIG_TRUSTY) || \
+		defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+		defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT))
 	int cpuid, clusterid;
 
 	read_id(&cpuid, &clusterid);
@@ -776,6 +787,18 @@ void mt_platform_restore_context(int flags)
 	if (!IS_DORMANT_INNER_OFF(flags)) {
 		if (cpuid == 0)
 			mt_secure_call(MC_FC_SLEEP_CANCELLED, 0, 0, 0, 0);
+	}
+#elif defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+	/* SODI/DPIDLE */
+	if (!IS_DORMANT_INNER_OFF(flags)) {
+		if (cpuid == 0)
+			teei_secure_call(TEEI_FC_CPU_DORMANT_CANCEL, 0, 0, flags);
+	}
+#elif defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT)
+	/* SODI/DPIDLE */
+	if (!IS_DORMANT_INNER_OFF(flags)) {
+		if (cpuid == 0)
+			teei_secure_call(TEEI_FC_CPU_DORMANT_CANCEL, 0, 0, flags);
 	}
 #elif defined(CONFIG_TRUSTY)
 	/* SODI/DPIDLE */
@@ -827,6 +850,12 @@ static int mt_cpu_dormant_abort(unsigned long index)
 #ifdef CONFIG_TRUSTONIC_TEE_SUPPORT
 	if (cpuid == 0)
 		mt_secure_call(MC_FC_SLEEP_CANCELLED, 0, 0, 0, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+	if (cpuid == 0)
+		teei_secure_call(TEEI_FC_CPU_DORMANT_CANCEL, 0, 0, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+	if (cpuid == 0)
+		teei_secure_call(TEEI_FC_CPU_DORMANT_CANCEL, 0, 0, 0);
 #elif defined(CONFIG_TRUSTY) && (defined(CONFIG_MACH_MT6580) || defined(CONFIG_ARCH_MT6570))
 	if (cpuid == 0)
 		mt_trusty_call(SMC_FC_CPU_DORMANT_CANCEL, 0, 0, 0);
@@ -900,6 +929,12 @@ int mt_cpu_dormant(unsigned long flags)
 	/* CPU_DEEP_SLEEP (0), CPU_MCDI_SLEEP (1)  */
 	mt_secure_call(MC_FC_MTK_SLEEP, virt_to_phys(cpu_resume),
 			cpuid, IS_DORMANT_INNER_OFF(flags) ? 0 : 1, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+	teei_secure_call(TEEI_FC_CPU_DORMANT, virt_to_phys(cpu_resume),
+			cpuid, IS_DORMANT_INNER_OFF(flags));
+#elif defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+	teei_secure_call(TEEI_FC_CPU_DORMANT, virt_to_phys(cpu_resume),
+			cpuid, IS_DORMANT_INNER_OFF(flags));
 #elif defined(CONFIG_TRUSTY) && (defined(CONFIG_MACH_MT6580) || defined(CONFIG_ARCH_MT6570))
 	mt_trusty_call(SMC_FC_CPU_DORMANT, virt_to_phys(cpu_resume), cpuid, 0);
 #else
@@ -918,6 +953,25 @@ int mt_cpu_dormant(unsigned long flags)
 		if (num_possible_cpus() == 4) {
 			mt_secure_call(MC_FC_SET_RESET_VECTOR, virt_to_phys(cpu_wake_up_errata_802022), 2, 0, 0);
 			mt_secure_call(MC_FC_SET_RESET_VECTOR, virt_to_phys(cpu_wake_up_errata_802022), 3, 0, 0);
+		}
+#elif defined(CONFIG_MICROTRUST_TEE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+		teei_secure_call(TEEI_FC_CPU_ON,
+			virt_to_phys(cpu_wake_up_errata_802022), 1, 1);
+		if (num_possible_cpus() == 4) {
+			teei_secure_call(TEEI_FC_CPU_ON,
+			virt_to_phys(cpu_wake_up_errata_802022), 2, 1);
+			teei_secure_call(TEEI_FC_CPU_ON,
+			virt_to_phys(cpu_wake_up_errata_802022), 3, 1);
+		}
+#elif defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT) && \
+				defined(CONFIG_MACH_MT6580)
+		teei_secure_call(TEEI_FC_CPU_ON,
+			virt_to_phys(cpu_wake_up_errata_802022), 1, 1);
+		if (num_possible_cpus() == 4) {
+			teei_secure_call(TEEI_FC_CPU_ON,
+			virt_to_phys(cpu_wake_up_errata_802022), 2, 1);
+			teei_secure_call(TEEI_FC_CPU_ON,
+			virt_to_phys(cpu_wake_up_errata_802022), 3, 1);
 		}
 #elif defined(CONFIG_TRUSTY) && (defined(CONFIG_MACH_MT6580) || defined(CONFIG_ARCH_MT6570))
 		mt_trusty_call(SMC_FC_CPU_ON, virt_to_phys(cpu_wake_up_errata_802022), 1, 1);
@@ -938,6 +992,10 @@ int mt_cpu_dormant(unsigned long flags)
 
 #ifdef CONFIG_TRUSTONIC_TEE_SUPPORT
 		mt_secure_call(MC_FC_ERRATA_808022, 0, 0, 0, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+		teei_secure_call(TEEI_FC_CPU_ERRATA_802022, 0, 0, 0);
+#elif defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT) && defined(CONFIG_MACH_MT6580)
+		teei_secure_call(TEEI_FC_CPU_ERRATA_802022, 0, 0, 0);
 #elif defined(CONFIG_TRUSTY) && (defined(CONFIG_MACH_MT6580) || defined(CONFIG_ARCH_MT6570))
 		mt_trusty_call(SMC_FC_CPU_ERRATA_802022, 0, 0, 0);
 #endif

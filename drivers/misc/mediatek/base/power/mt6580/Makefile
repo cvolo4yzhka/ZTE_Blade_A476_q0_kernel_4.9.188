@@ -50,3 +50,9 @@ obj-y += mt_hotplug_strategy_procfs.o
 obj-y += mt_hotplug_strategy_cpu.o
 obj-y += mt_hotplug_strategy_api.o
 obj-y += mt_hotplug_strategy_algo.o
+ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT),y)
+include $(srctree)/drivers/misc/mediatek/teei/Makefile.include
+endif
+ifeq ($(CONFIG_MICROTRUST_TEE_LITE_SUPPORT),y)
+include $(srctree)/drivers/misc/mediatek/teei/Makefile.include
+endif

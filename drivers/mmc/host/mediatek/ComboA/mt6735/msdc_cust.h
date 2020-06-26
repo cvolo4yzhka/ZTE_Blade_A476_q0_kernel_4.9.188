@@ -336,6 +336,7 @@
 
 #define SDCARD_ESD_RECOVERY
 /* #define MSDC_HQA */
+#define EMMC_RUNTIME_AUTOK_MERGE
 
 /**************************************************************/
 /* Section 6: BBChip-depenent Tunnig Parameter                */

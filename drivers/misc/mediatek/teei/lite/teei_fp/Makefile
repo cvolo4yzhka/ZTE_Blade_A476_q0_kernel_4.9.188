@@ -10,4 +10,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 
-obj-$(CONFIG_MICROTRUST_TUI_DRIVER) += utr_tui_main.o
+obj-$(CONFIG_MICROTRUST_TZ_DRIVER) += fp_func.o
+ccflags-y += -D DEBUG_DO -fno-pic -Wno-error
+
+MTK_PLATFORM := $(shell echo $(CONFIG_MTK_PLATFORM) | grep -o "[0-9]\+")
+ccflags-y += -D MTK_PLATFORM=$(MTK_PLATFORM)

@@ -3638,8 +3638,13 @@ start_tune:
 				emmc_execute_dvfs_autok(host, MMC_SEND_STATUS);
 			else
 #endif
+#ifndef EMMC_RUNTIME_AUTOK_MERGE
 				emmc_execute_dvfs_autok(host,
 					MMC_SEND_TUNING_BLOCK_HS200);
+#else
+				emmc_runtime_autok_merge(
+					MMC_SEND_TUNING_BLOCK_HS200);
+#endif
 			break;
 		}
 		/* fall through */

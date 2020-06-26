@@ -142,12 +142,10 @@ static long ion_sys_cache_sync(struct ion_client *client,
 						   param->kernel_handle,
 						   from_kernel);
 		if (IS_ERR(kernel_handle)) {
-			IONMSG(" cache sync fail!\n");
+			IONMSG("%s fail!\n", __func__);
 			return -EINVAL;
 		}
 #ifdef __ION_CACHE_SYNC_USER_VA_EN__
-		//if (sync_type < ION_CACHE_CLEAN_BY_RANGE_USE_PA)
-		//work aroud for cache sync issue
 		if (sync_type < ION_CACHE_CLEAN_ALL)
 #endif
 		{
@@ -166,12 +164,14 @@ static long ion_sys_cache_sync(struct ion_client *client,
 			mutex_lock(&ion_cache_sync_lock);
 
 			if (!cache_map_vm_st) {
-				IONMSG(" warn: vm_struct is retry\n");
+				IONMSG("%s warn: vm_struct is retry\n",
+				       __func__);
 				ion_cache_sync_init();
 			}
 
 			if (!cache_map_vm_st) {
-				IONMSG("error: vm_struct is NULL!\n");
+				IONMSG("%s error: vm_struct is NULL!\n",
+				       __func__);
 				mutex_unlock(&ion_cache_sync_lock);
 				mutex_unlock(&client->lock);
                           	ion_drv_put_kernel_handle(kernel_handle);
@@ -183,13 +183,38 @@ static long ion_sys_cache_sync(struct ion_client *client,
 				    PAGE_ALIGN(sg->length) / PAGE_SIZE;
 				struct page *page = sg_page(sg);
 
+				if (!page) {
+					phys_addr_t pa = sg_dma_address(sg);
+
+					if (!pa) {
+						IONMSG("%s fail, no page\n",
+						       __func__);
+						mutex_unlock
+						    (&ion_cache_sync_lock);
+						mutex_unlock(&client->lock);
+						ion_drv_put_kernel_handle
+						    (kernel_handle);
+						return -EFAULT;
+					}
+					page = phys_to_page(pa);
+					if (!pfn_valid(page_to_pfn(page))) {
+						IONMSG
+						    ("%s fail, page invalid\n",
+						     __func__);
+						mutex_unlock
+						    (&ion_cache_sync_lock);
+						mutex_unlock(&client->lock);
+						ion_drv_put_kernel_handle
+						    (kernel_handle);
+						return -EFAULT;
+					}
+				}
+
 				if (i >= npages) {
-					IONMSG
-					    ("dma op error:pg is %d, npg=%d\n",
-					     i, npages);
+					IONMSG("%s warn:pg is %d, npg=%d\n",
+					     __func__, i, npages);
 					break;
 				}
-				/*BUG_ON(i >= npages); */
 				for (j = 0; j < npages_this_entry; j++) {
 					start =
 					    (unsigned long)

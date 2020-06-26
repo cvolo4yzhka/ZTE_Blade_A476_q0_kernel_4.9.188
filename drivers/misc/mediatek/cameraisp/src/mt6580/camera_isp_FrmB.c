@@ -1008,7 +1008,7 @@ bool ISP_chkModuleSetting(void)
 		unsigned int TG_W;
 		unsigned int TG_H;
 		unsigned int AF_EN;
-		unsigned int SGG_EN;
+		unsigned int SGG_EN,EIS_EN;
 		unsigned int cam_tg_sen_mode, dbl_data_bus;
 		unsigned int tg_w_pxl_e, tg_w_pxl_s;
 		unsigned int tg_h_lin_e, tg_h_lin_s;
@@ -1086,6 +1086,7 @@ bool ISP_chkModuleSetting(void)
 
 		AF_EN = (cam_ctrl_en_p1 >> 16) & 0x1;
 		SGG_EN = (cam_ctrl_en_p1 >> 15) & 0x1;
+		EIS_EN = (cam_ctrl_en_p1 >> 21) & 0x1;
 
 		//
 		tg_w_pxl_e = (TG_W >> 16) & 0x7fff;
@@ -1198,7 +1199,7 @@ bool ISP_chkModuleSetting(void)
 
 		cam_ctl_scenario = ISP_RD32(ISP_ADDR + 0x10);
 		scenario = (cam_ctl_scenario >> 4) & 0x7;
-
+		if (EIS_EN) {
 		CAM_EIS_PREP_ME_CTRL1 = ISP_RD32(ISP_ADDR + 0xDC0);
 		CAM_EIS_MB_OFFSET = ISP_RD32(ISP_ADDR + 0xDD0);
 		CAM_EIS_MB_INTERVAL = ISP_RD32(ISP_ADDR + 0xDD4);
@@ -1324,6 +1325,7 @@ bool ISP_chkModuleSetting(void)
 				grab_height, TG_W);
 		}
 #endif
+		}
 	}
 
 	return MTRUE;
@@ -1358,7 +1360,7 @@ static unsigned int start_time[_ChannelMax] = { 0, 0, 0, 0 };
 static unsigned int avg_frame_time[_ChannelMax] = { 0, 0, 0, 0 };
 
 /* record lost p1_done or not, 1 for lost p1_done.
- * 0 for normal , 2 for last working buffer.
+ * 0 for normal , 2 for last working buffer. 0xF for hw error at previous frame
  */
 static int sof_pass1done[2] = { 0, 0 };
 
@@ -6034,15 +6036,21 @@ ISP_IRQ_INT_STATUS_FLK_ERR_ST|ISP_IRQ_INT_STATUS_LSC_ERR_ST)
 			 * "lost p1Done ErrHandle\n");
 			 */
 #endif
-
 			IRQ_LOG_KEEPER(_IRQ, m_CurrentPPB, _LOG_INF,
 			"Lost p1 done_%d (0x%x): ",
 			sof_count[_PASS1], cur_v_cnt);
 		} else {
-			sof_pass1done[0] = 0;
-			if (p1_fbc[_dmaport].Bits.FB_NUM ==
-				(p1_fbc[_dmaport].Bits.FBC_CNT + 1))
-				sof_pass1done[0] = 2;
+			if (IrqStatus[ISP_IRQ_TYPE_INTX] & IspInfo_FrmB.
+				IrqInfo.ErrMask[ISP_IRQ_TYPE_INTX]) {
+				/* error case */
+				sof_pass1done[0] = 0xF;
+			}
+			else{/* no error */
+				sof_pass1done[0] = 0;
+				if (p1_fbc[_dmaport].Bits.FB_NUM ==
+					(p1_fbc[_dmaport].Bits.FBC_CNT + 1))
+					sof_pass1done[0] = 2;
+			}
 		}
 #ifdef _rtbc_buf_que_2_0_
 		{

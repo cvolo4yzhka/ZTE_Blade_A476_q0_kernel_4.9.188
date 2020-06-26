@@ -313,6 +313,13 @@ void __attribute__((weak)) msdc_clk_status(int *status)
 	*status = 0x1;
 }
 
+#if (defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT))
+int __attribute__((weak)) is_teei_ready(void)
+{
+	return 1;
+}
+#endif
 
 enum {
 	IDLE_TYPE_DP = 0,
@@ -1111,7 +1118,8 @@ static bool soidle_can_enter(int cpu)
 		goto out;
 	}
 
-#if defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+#if (defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT))
 	if (!is_teei_ready()) {
 		reason = BY_OTH;
 		goto out;
@@ -1343,7 +1351,8 @@ static bool dpidle_can_enter(void)
 		goto out;
 	}
 
-#if defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+#if (defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT))
 	if (!is_teei_ready()) {
 		reason = BY_OTH;
 		goto out;

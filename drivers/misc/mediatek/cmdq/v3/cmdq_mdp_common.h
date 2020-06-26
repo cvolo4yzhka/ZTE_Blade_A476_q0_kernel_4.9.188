@@ -162,6 +162,14 @@ void cmdq_mdp_release_task_by_file_node(void *file_node);
 void cmdq_mdp_init(void);
 void cmdq_mdp_deinit_pmqos(void);
 
+struct op_meta;
+struct mdp_submit;
+s32 cmdq_mdp_update_sec_addr_index(struct cmdqRecStruct *handle,
+	u32 sec_handle, u32 index, u32 instr_index);
+u32 cmdq_mdp_handle_get_instr_count(struct cmdqRecStruct *handle);
+void cmdq_mdp_meta_replace_sec_addr(struct op_meta *metas,
+	struct mdp_submit *user_job, struct cmdqRecStruct *handle);
+
 /* Platform dependent function */
 
 void cmdq_mdp_virtual_function_setting(void);

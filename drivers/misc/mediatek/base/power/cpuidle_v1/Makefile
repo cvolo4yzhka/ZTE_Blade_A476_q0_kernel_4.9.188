@@ -10,3 +10,9 @@ else
 obj-y += cpu_dormant.o
 endif
 
+ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT),y)
+include $(srctree)/drivers/misc/mediatek/teei/Makefile.include
+endif
+ifeq ($(CONFIG_MICROTRUST_TEE_LITE_SUPPORT),y)
+include $(srctree)/drivers/misc/mediatek/teei/Makefile.include
+endif

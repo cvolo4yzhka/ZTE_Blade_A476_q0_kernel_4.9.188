@@ -104,7 +104,8 @@ void log_boot(char *str)
 out:
 	mutex_unlock(&bootprof_lock);
 }
-#ifdef CONFIG_MICROTRUST_TEE_SUPPORT
+#if (defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_MICROTRUST_TEE_LITE_SUPPORT))
 EXPORT_SYMBOL(log_boot);
 #endif
 
