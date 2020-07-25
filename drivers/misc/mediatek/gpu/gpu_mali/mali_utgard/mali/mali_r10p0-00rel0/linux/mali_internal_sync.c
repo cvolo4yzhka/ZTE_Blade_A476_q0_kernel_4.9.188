@@ -583,7 +583,8 @@ int mali_internal_sync_fence_wait_async(struct mali_internal_sync_fence *sync_fe
 
 	if (1 == err)
 		return err;
-
+        init_waitqueue_func_entry(&waiter->work, mali_internal_sync_fence_wake_up_wq);
+        waiter->work.private = sync_fence;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 	err = dma_fence_add_callback(sync_fence->fence, &waiter->cb, mali_internal_fence_check_cb_func);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
@@ -595,8 +596,6 @@ int mali_internal_sync_fence_wait_async(struct mali_internal_sync_fence *sync_fe
 			err = 1;
 		return err;
 	}
-	init_waitqueue_func_entry(&waiter->work, mali_internal_sync_fence_wake_up_wq);
-	waiter->work.private = sync_fence;
 
 	spin_lock_irqsave(&sync_fence->wq.lock, flags);
 	err =  sync_fence->fence->ops->signaled(sync_fence->fence);

@@ -2075,6 +2075,28 @@ int ccci_pre_stop(int md_id)
 	return ret;
 }
 
+int ccci_pre_stop_no_skip(int md_id)
+{
+	struct md_ctl_block_t *ctl_b;
+	int ret = 0;
+
+	ctl_b = md_ctlb[md_id];
+	if (ctl_b == NULL)
+		return -CCCI_ERR_FATAL_ERR;
+
+	additional_operation_before_stop_md(md_id);
+
+	CCCI_MSG_INF(md_id, "ctl", "Now disable CCIF irq\n");
+
+	ccci_disable_md_intr(md_id);
+
+	CCCI_MSG_INF(md_id, "ctl", "CCIF irq disabled\n");
+	/* set_curr_md_state(md_id, MD_BOOT_STAGE_0); */
+	ctl_b->md_boot_stage = MD_BOOT_STAGE_0;
+
+	return ret;
+}
+
 int ccci_stop_modem(int md_id, unsigned int timeout)
 {
 	struct md_ctl_block_t *ctl_b;
@@ -2499,6 +2521,7 @@ static int boot_md(int md_id)
 	int ret = 0;
 	struct md_ctl_block_t *ctl_b;
 	char err_str[256];
+	int _1st_boot;
 
 	CCCI_MSG_INF(md_id, "ctl", "boot md%d\n", md_id + 1);
 	if (md_id >= get_md_sys_max_num())
@@ -2518,6 +2541,7 @@ static int boot_md(int md_id)
 
 	/*  Step 1, load image */
 	if (ctl_b->is_first_boot) {
+		_1st_boot = 1;
 		if (!modem_run_env_ready(md_id)) {
 			ret = ccci_load_firmware_helper(md_id, err_str, 256);
 			if (ret < 0) {
@@ -2534,36 +2558,40 @@ static int boot_md(int md_id)
 		CCCI_MSG_INF(md_id, "ctl",
 			"load firmware successful!\n");
 	} else {
+		_1st_boot = 0;
 		CCCI_MSG_INF(md_id, "ctl",
 			"modem&dsp firmware already exist, not load again!\n");
 	}
 
-	/*  Step 2.1, register md control call back function */
-	ret =
-	    register_to_logic_ch(md_id, CCCI_CONTROL_RX, ccci_md_ctrl_cb, ctl_b);
-	if (ret != 0) {
-		CCCI_MSG_INF(md_id, "ctl", "register CCCI_CONTROL_RX fail\n");
-		un_register_to_logic_ch(0, CCCI_CONTROL_TX);
-		return ret;
-	}
+	if (_1st_boot) {
+		/*  Step 2.1, register md control call back function */
+		ret =
+		    register_to_logic_ch(md_id, CCCI_CONTROL_RX, ccci_md_ctrl_cb, ctl_b);
+		if (ret != 0) {
+			CCCI_MSG_INF(md_id, "ctl", "register CCCI_CONTROL_RX fail\n");
+			un_register_to_logic_ch(0, CCCI_CONTROL_TX);
+			return ret;
+		}
 
-	/*  Step 2.2, register md control call back function */
-	ret =
-	    register_to_logic_ch(md_id, CCCI_SYSTEM_RX, ccci_sys_rx_dispatch_cb, NULL);
-	if (ret != 0) {
-		CCCI_MSG_INF(md_id, "ctl", "register CCCI_SYSTEM_RX fail\n");
-		un_register_to_logic_ch(0, CCCI_SYSTEM_RX);
-		return ret;
-	}
+		/*  Step 2.2, register md control call back function */
+		ret =
+		    register_to_logic_ch(md_id, CCCI_SYSTEM_RX, ccci_sys_rx_dispatch_cb, NULL);
+		if (ret != 0) {
+			CCCI_MSG_INF(md_id, "ctl", "register CCCI_SYSTEM_RX fail\n");
+			un_register_to_logic_ch(0, CCCI_SYSTEM_RX);
+			return ret;
+		}
 
-	/*  Step 3, register MD wdt call back. */
-	ccci_md_wdt_notify_register(md_id, send_md_reset_notify);
+		/*  Step 3, register MD wdt call back. */
+		ccci_md_wdt_notify_register(md_id, send_md_reset_notify);
 
-	/*  Step 4, power on modem */
-	ccci_power_on_md(md_id);
+		/*  Step 4, power on modem */
+		ccci_power_on_md(md_id);
 
-	/*  Step 5, register md intr */
-	ccci_hal_irq_register(md_id);
+		/*  Step 5, register md intr */
+		ccci_hal_irq_register(md_id);
+	} else
+		ccci_hal_reset(md_id);
 
 	/*  step 6, start modem */
 	ccci_start_modem(md_id);

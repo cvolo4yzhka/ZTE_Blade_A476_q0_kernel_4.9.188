@@ -122,6 +122,8 @@ int send_md_start_notify(int md_id);
 int ccci_start_modem(int md_id);
 int ccci_set_md_boot_data(int md_id, unsigned int data[], int len);
 int ccci_stop_modem(int md_id, unsigned int timeout);
+int ccci_pre_stop(int md_id);
+int ccci_pre_stop_no_skip(int md_id);
 int ccci_set_reload_modem(int md_id);
 int ccci_send_run_time_data(int md_id);
 int statistics_init_ch_dir(int md_sys_id, int ch, int dir, char *name);

@@ -43,7 +43,7 @@ static void __ccif_v1_dis_intr(struct ccif_t *ccif)
 	CCCI_FUNC_ENTRY(ccif->m_md_id);
 	spin_lock_irqsave(&ccif->m_lock, flag);
 	if (ccif->m_irq_dis_cnt == 0) {
-		disable_irq(ccif->m_irq_id);
+		disable_irq_nosync(ccif->m_irq_id);
 		ccif->m_irq_dis_cnt++;
 	}
 	spin_unlock_irqrestore(&ccif->m_lock, flag);

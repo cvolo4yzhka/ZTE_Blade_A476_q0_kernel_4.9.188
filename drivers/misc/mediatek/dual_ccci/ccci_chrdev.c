@@ -882,6 +882,15 @@ static int ccci_vir_chr_open(struct inode *inode, struct file *file)
 static int ccci_vir_chr_release(struct inode *inode, struct file *file)
 {
 	struct ccci_vir_client_t  *client = (struct ccci_vir_client_t  *) file->private_data;
+	int ret;
+
+	if (strcmp(current->comm, "ccci_mdinit") == 0) {
+		CCCI_MSG_INF(MD_SYS1, "chr", "ccci mdinit exit, force stop MD\n");
+		ccci_pre_stop_no_skip(MD_SYS1);
+		ret = ccci_stop_modem(MD_SYS1, 0);
+		if (ret)
+			CCCI_ERR("force stop MD fail\n");
+	}
 
 	ccci_put_vir_client(client);
 	return 0;

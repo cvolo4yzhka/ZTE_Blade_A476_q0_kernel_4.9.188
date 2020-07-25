@@ -332,13 +332,7 @@ ssize_t ccci_attr_store(struct kobject *kobj, struct attribute *attr,
 void ccci_attr_release(struct kobject *kobj)
 {
 	struct ccci_info_t *ccci_info_temp = container_of(kobj, struct ccci_info_t, kobj);
-	int ret = 0;
 
-	if(!strcmp(kobj->name, "ccci_monitor")) {
-		ret = ccci_stop_modem(modem_index, 0);
-		if (ret)
-			CCCI_ERR("force stop MD fail\n");
-	}
 	CCCI_MSG("port %s is closed\n", kobj->name);
 	kfree(ccci_info_temp);
 	ccci_sys_info = NULL;
