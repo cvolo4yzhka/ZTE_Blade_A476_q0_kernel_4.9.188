@@ -1220,6 +1220,8 @@ char *usb_get_gadget_udc_name(void)
 			name = kstrdup(udc->gadget->name, GFP_KERNEL);
 			break;
 		}
+
+//		req->dma_mapped = 1;
 	}
 	mutex_unlock(&udc_lock);
 	return name;
