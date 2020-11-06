@@ -106,7 +106,7 @@ skip_reinit1:
 skip_reinit2:
 	return ret;
 }
-
+#ifdef CONFIG_PWR_LOSS_MTK_TEST
 static int sd_ioctl_reinit(struct msdc_ioctl *msdc_ctl)
 {
 	struct msdc_host *host = mtk_msdc_host[1];
@@ -127,7 +127,7 @@ static int sd_ioctl_cd_pin_en(struct msdc_ioctl	*msdc_ctl)
 	else
 		return -EINVAL;
 }
-
+#endif
 int simple_sd_ioctl_rw(struct msdc_ioctl *msdc_ctl)
 {
 	struct scatterlist msdc_sg;
@@ -411,7 +411,7 @@ static int simple_sd_ioctl_get_cid(struct msdc_ioctl *msdc_ctl)
 	return 0;
 
 }
-
+#ifdef CONFIG_PWR_LOSS_MTK_TES
 static int simple_sd_ioctl_get_csd(struct msdc_ioctl *msdc_ctl)
 {
 	struct msdc_host *host_ctl;
@@ -495,7 +495,7 @@ end:
 
 	return ret;
 }
-
+#endif
 static int simple_sd_ioctl_set_bootpart(struct msdc_ioctl *msdc_ctl)
 {
 	u8 *l_buf = NULL;
@@ -563,7 +563,7 @@ end:
 	kfree(l_buf);
 	return ret;
 }
-
+#ifdef CONFIG_PWR_LOSS_MTK_TEST
 static int simple_sd_ioctl_get_partition_size(struct msdc_ioctl *msdc_ctl)
 {
 	int ret = 0;
@@ -696,7 +696,7 @@ static int simple_sd_ioctl_get_driving(struct msdc_ioctl *msdc_ctl)
 
 	return 0;
 }
-
+#endif
 /*  to ensure format operate is clean the emmc device fully(partition erase) */
 #define MBR_PART_NUM            6
 #define __MMC_ERASE_ARG         0x00000000
@@ -704,6 +704,7 @@ static int simple_sd_ioctl_get_driving(struct msdc_ioctl *msdc_ctl)
 #define __MMC_DISCARD_ARG       0x00000003
 
 /* call mmc block layer interface for userspace to do erase operate */
+#ifdef CONFIG_PWR_LOSS_MTK_TEST
 static int simple_mmc_erase_func(unsigned int start, unsigned int size)
 {
 	struct msdc_host *host;
@@ -746,7 +747,7 @@ end:
 
 	return 0;
 }
-
+#endif
 /* These definitiona and functions are coded by reference to
  * mmc_blk_issue_discard_rq()@block.c
  */
@@ -756,6 +757,8 @@ end:
 #define INAND_CMD38_ARG_SECERASE 0x80
 #define INAND_CMD38_ARG_SECTRIM1 0x81
 #define INAND_CMD38_ARG_SECTRIM2 0x88
+
+#ifdef CONFIG_PWR_LOSS_MTK_TEST
 static int simple_sd_ioctl_erase_selected_area(struct msdc_ioctl *msdc_ctl)
 {
 	struct msdc_host *host_ctl;
@@ -856,7 +859,7 @@ static int simple_mmc_erase_partition_wrap(struct msdc_ioctl *msdc_ctl)
 
 	return simple_mmc_erase_partition(name);
 }
-
+#endif
 static long simple_sd_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg)
 {
