@@ -1255,6 +1255,13 @@ static int hidpp_ff_init(struct hidpp_device *hidpp, u8 feature_index)
 	hidinput = list_entry(hid->inputs.next, struct hid_input, list);
 	dev = hidinput->input;
 
+	if (list_empty(&hid->inputs)) {
+		hid_err(hid, "no inputs found\n");
+		return -ENODEV;
+	}
+	hidinput = list_entry(hid->inputs.next, struct hid_input, list);
+	dev = hidinput->input;
+
 	if (!dev) {
 		hid_err(hid, "Struct input_dev not set!\n");
 		return -EINVAL;
