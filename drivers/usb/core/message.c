@@ -725,6 +725,12 @@ static void usb_try_string_workarounds(unsigned char *buf, int *length)
 		buf[0] = newlength;
 		*length = newlength;
 	}
+
+	spin_lock_irqsave(&io->lock, flags);
+	io->count--;
+	if (!io->count)
+		complete(&io->complete);
+	spin_unlock_irqrestore(&io->lock, flags);
 }
 
 static int usb_string_sub(struct usb_device *dev, unsigned int langid,
