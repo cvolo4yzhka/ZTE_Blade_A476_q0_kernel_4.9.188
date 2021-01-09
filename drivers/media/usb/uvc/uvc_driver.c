@@ -1590,6 +1590,11 @@ static unsigned int uvc_print_terms(struct list_head *terms, u16 dir,
 		if (!UVC_ENTITY_IS_TERM(term) ||
 		    UVC_TERM_DIRECTION(term) != dir)
 			continue;
+		if (forward->chain.next || forward->chain.prev) {
+			uvc_trace(UVC_TRACE_DESCR, "Found reference to "
+				"entity %d already in chain.\n", forward->id);
+			return -EINVAL;
+		}
 
 		if (nterms)
 			p += sprintf(p, ",");
