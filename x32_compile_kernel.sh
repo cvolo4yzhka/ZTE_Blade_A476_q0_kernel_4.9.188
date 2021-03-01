@@ -8,6 +8,5 @@ export  KBUILD_OUTPUT=out32
 #set defconfig
 make zte_blade_a476_defconfig
 #start compile
-make zImage-dtb -j5
-# 2>&1 | tee out32/build.log
+make zImage-dtb -j5 2>&1 | tee out32/build.log
 #make menuconfig

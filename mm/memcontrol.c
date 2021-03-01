@@ -1718,6 +1718,15 @@ void unlock_page_memcg(struct page *page)
 {
 	__unlock_page_memcg(page->mem_cgroup);
 }
+
+/**
+ * unlock_page_memcg - unlock a page->mem_cgroup binding
+ * @page: the page
+ */
+void unlock_page_memcg(struct page *page)
+{
+	__unlock_page_memcg(page->mem_cgroup);
+}
 EXPORT_SYMBOL(unlock_page_memcg);
 
 /*

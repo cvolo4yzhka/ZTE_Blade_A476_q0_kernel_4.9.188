@@ -509,13 +509,12 @@ void unlock_page_memcg(struct page *page);
  *     mem_cgroup_update_page_stat(page, state, -1);
  *   unlock_page(page) or unlock_page_memcg(page)
  */
+
 static inline void mem_cgroup_update_page_stat(struct page *page,
 				 enum mem_cgroup_stat_index idx, int val)
 {
-	VM_BUG_ON(!(rcu_read_lock_held() || PageLocked(page)));
 
-	if (page->mem_cgroup)
-		this_cpu_add(page->mem_cgroup->stat->count[idx], val);
+	__mem_cgroup_update_page_stat(page, page->mem_cgroup, idx, val);
 }
 
 static inline void mem_cgroup_inc_page_stat(struct page *page,
@@ -769,6 +768,13 @@ static inline bool mem_cgroup_oom_synchronize(bool wait)
 static inline void mem_cgroup_update_page_stat(struct page *page,
 					       enum mem_cgroup_stat_index idx,
 					       int nr)
+{
+}
+
+static inline void __mem_cgroup_update_page_stat(struct page *page,
+						 struct mem_cgroup *memcg,
+						 enum mem_cgroup_stat_index idx,
+						 int nr)
 {
 }
 
